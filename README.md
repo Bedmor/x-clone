@@ -1,29 +1,108 @@
-# Create T3 App
+# X Clone
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A full-stack clone of X (formerly Twitter) built with the [T3 Stack](https://create.t3.gg/). This project demonstrates a modern web application architecture using Next.js, tRPC, Prisma, and Tailwind CSS.
 
-## What's next? How do I make an app with this?
+## Features
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+- **Authentication**: Secure login via Discord, Google, or Credentials using NextAuth.js.
+- **Posting**: Create text-based posts, reply to others, and repost content.
+- **Interactions**: Like posts and follow other users.
+- **Notifications**: Real-time-like notifications for likes, replies, mentions, and follows.
+- **Profiles**: Customizable user profiles with bio, location, and website.
+- **Image Upload**: Support for user avatars and header images.
+- **Responsive Design**: Mobile-friendly UI built with Tailwind CSS.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Tech Stack
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+- **Framework**: [Next.js 15](https://nextjs.org) (App Router)
+- **Language**: [TypeScript](https://www.typescriptlang.org)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com)
+- **Database**: [PostgreSQL](https://www.postgresql.org)
+- **ORM**: [Prisma](https://www.prisma.io)
+- **API**: [tRPC](https://trpc.io)
+- **Authentication**: [NextAuth.js](https://next-auth.js.org)
+- **Deployment**: Vercel (recommended)
 
-## Learn More
+## Getting Started
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+### Prerequisites
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+- Node.js (v18 or higher)
+- npm / yarn / pnpm
+- Docker (optional, for local database)
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+### Installation
 
-## How do I deploy this?
+1. Clone the repository:
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+   ```bash
+   git clone https://github.com/yourusername/x-clone.git
+   cd x-clone
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Set up environment variables:
+   Create a `.env` file in the root directory based on `.env.example` (if available) or use the following template:
+
+   ```env
+   # Database
+   DATABASE_URL="postgresql://postgres:password@localhost:5432/x-clone"
+
+   # Next Auth
+   AUTH_SECRET="your-super-secret-auth-secret"
+   AUTH_URL="http://localhost:3000"
+
+   # OAuth Providers (Optional for local dev if using credentials)
+   AUTH_DISCORD_ID=""
+   AUTH_DISCORD_SECRET=""
+   AUTH_GOOGLE_ID=""
+   AUTH_GOOGLE_SECRET=""
+
+   # Admin/Dev Credentials
+   AUTH_CREDENTIALS_EMAIL="admin@example.com"
+   AUTH_CREDENTIALS_PASSWORD="password"
+   AUTH_CREDENTIALS_NAME="Admin"
+   ```
+
+### Database Setup
+
+You can start a local PostgreSQL instance using the provided script (requires Docker):
+
+```bash
+./start-database.sh
+```
+
+Once the database is running, push the schema:
+
+```bash
+npm run db:push
+```
+
+### Running the App
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Scripts
+
+- `npm run dev`: Starts the development server.
+- `npm run build`: Builds the application for production.
+- `npm run start`: Starts the production server.
+- `npm run lint`: Runs ESLint.
+- `npm run typecheck`: Runs TypeScript type checking.
+- `npm run db:studio`: Opens Prisma Studio to view/edit database records.
+- `npm run db:generate`: Generates the Prisma Client.
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
