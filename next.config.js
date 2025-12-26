@@ -5,6 +5,29 @@
 import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
-const config = {};
+const config = {
+    images: {
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "cdn.discordapp.com",
+                pathname: "/**",
+            },
+            {
+                protocol: "https",
+                hostname: "**.google.com",
+                pathname: "/**",
+            },
+            {
+                protocol: "https",
+                hostname: "lh3.googleusercontent.com",
+                pathname: "/**",
+            }, {
+                protocol: "https",
+                hostname: "**.public.blob.vercel-storage.com",
+                pathname: "/**",
+            },],
+    },
+};
 
 export default config;
