@@ -94,7 +94,11 @@ export default function ChatPage() {
     },
   );
 
-  const messages = messagesData?.pages.flatMap((page) => page.messages) ?? [];
+  const messages =
+    messagesData?.pages
+      .slice()
+      .reverse()
+      .flatMap((page) => page.messages.slice().reverse()) ?? [];
 
   // Mark as read when conversation opens
   useEffect(() => {
@@ -347,11 +351,10 @@ export default function ChatPage() {
                     <p
                       className={`truncate text-sm ${isUnread ? "font-semibold text-white" : "text-gray-500"}`}
                     >
-                      {lastMessage?.content
-                        ? lastMessage.content
-                        : lastMessage?.attachmentUrl
+                      {lastMessage?.content ??
+                        (lastMessage?.attachmentUrl
                           ? "Sent an image"
-                          : "No messages yet"}
+                          : "No messages yet")}
                     </p>
                   </div>
                 </div>
@@ -430,45 +433,39 @@ export default function ChatPage() {
                 <div className="text-center">Loading messages...</div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {messages
-                    .slice()
-                    .reverse()
-                    .map((message) => {
-                      const isMe = message.senderId === session.user.id;
-                      return (
+                  {messages.map((message) => {
+                    const isMe = message.senderId === session.user.id;
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                      >
                         <div
-                          key={message.id}
-                          className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                            isMe
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-800 text-white"
+                          }`}
                         >
-                          <div
-                            className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                              isMe
-                                ? "bg-blue-500 text-white"
-                                : "bg-gray-800 text-white"
-                            }`}
-                          >
-                            {message.attachmentUrl && (
-                              <Image
-                                src={message.attachmentUrl}
-                                alt="Attachment"
-                                width={300}
-                                height={200}
-                                className="mb-2 max-h-60 rounded-lg object-cover"
-                              />
-                            )}
-                            {message.content && <p>{message.content}</p>}
-                            <span className="mt-1 block text-xs opacity-70">
-                              {formatDistanceToNow(
-                                new Date(message.createdAt),
-                                {
-                                  addSuffix: true,
-                                },
-                              )}
-                            </span>
-                          </div>
+                          {message.attachmentUrl && (
+                            <Image
+                              src={message.attachmentUrl}
+                              alt="Attachment"
+                              width={300}
+                              height={200}
+                              className="mb-2 max-h-60 rounded-lg object-cover"
+                            />
+                          )}
+                          {message.content && <p>{message.content}</p>}
+                          <span className="mt-1 block text-xs opacity-70">
+                            {formatDistanceToNow(new Date(message.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </span>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
 
                   {/* Typing Indicator */}
                   {typingUsers.size > 0 && (

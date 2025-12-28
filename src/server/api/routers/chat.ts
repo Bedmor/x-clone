@@ -63,7 +63,7 @@ export const chatRouter = createTRPCRouter({
       }
 
       return {
-        messages: messages.reverse(),
+        messages,
         nextCursor,
       };
     }),
