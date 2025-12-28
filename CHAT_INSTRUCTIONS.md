@@ -5,6 +5,7 @@ The chat feature uses a separate WebSocket server for real-time messaging.
 ## Prerequisites
 
 1.  Ensure dependencies are installed:
+
     ```bash
     npm install
     ```
@@ -37,5 +38,5 @@ To deploy the WebSocket server separately from Vercel:
 
 ## Environment Variables
 
--   `WS_PORT`: Port for the WebSocket server (default: 3001).
--   `NEXT_PUBLIC_WS_URL`: URL of the WebSocket server for the frontend to connect to.
+- `WS_PORT`: Port for the WebSocket server (default: 3001).
+- `NEXT_PUBLIC_WS_URL`: URL of the WebSocket server for the frontend to connect to.

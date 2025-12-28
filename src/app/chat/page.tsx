@@ -77,10 +77,11 @@ export default function ChatPage() {
     if (!socket) return;
 
     socket.on("new_message", (message: Message) => {
-      if (message.conversationId === selectedConversationId) { // Wait, message type doesn't have conversationId in my definition above but it comes from server
-         // Actually the server sends the full message object which includes conversationId
-         setMessages((prev) => [...prev, message]);
-         scrollToBottom();
+      if (message.conversationId === selectedConversationId) {
+        // Wait, message type doesn't have conversationId in my definition above but it comes from server
+        // Actually the server sends the full message object which includes conversationId
+        setMessages((prev) => [...prev, message]);
+        scrollToBottom();
       }
       // Also update conversation list last message preview if needed
       refetchConversations();
@@ -158,7 +159,7 @@ export default function ChatPage() {
                   />
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold truncate">
+                      <span className="truncate font-bold">
                         {otherParticipant?.name || "Unknown User"}
                       </span>
                       {lastMessage && (

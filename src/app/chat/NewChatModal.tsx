@@ -27,15 +27,15 @@ export function NewChatModal({
             ✕
           </button>
         </div>
-        
+
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
             placeholder="Search people"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-full border border-white/20 bg-black py-2 pl-10 pr-4 text-white focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-full border border-white/20 bg-black py-2 pr-4 pl-10 text-white focus:border-blue-500 focus:outline-none"
             autoFocus
           />
         </div>
@@ -60,7 +60,9 @@ export function NewChatModal({
                   />
                   <div className="flex flex-col">
                     <span className="font-bold">{user.name}</span>
-                    <span className="text-sm text-gray-500">@{user.username}</span>
+                    <span className="text-sm text-gray-500">
+                      @{user.username}
+                    </span>
                   </div>
                 </div>
               ))}
