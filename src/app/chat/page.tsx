@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Send, MailPlus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { NewChatModal } from "./NewChatModal";
 import { upload } from "@vercel/blob/client";
+import Image from "next/image";
 
 type Message = {
   id: string;
@@ -67,7 +68,7 @@ export default function ChatPage() {
     },
   });
 
-  const markAsRead = api.chat.markAsRead.useMutation({
+  const { mutate: markConversationAsRead } = api.chat.markAsRead.useMutation({
     onSuccess: () => {
       void utils.chat.getConversations.invalidate();
     },
@@ -98,9 +99,9 @@ export default function ChatPage() {
   // Mark as read when conversation opens
   useEffect(() => {
     if (selectedConversationId) {
-      markAsRead.mutate({ conversationId: selectedConversationId });
+      markConversationAsRead({ conversationId: selectedConversationId });
     }
-  }, [selectedConversationId]);
+  }, [selectedConversationId, markConversationAsRead]);
 
   // Socket connection
   useEffect(() => {
@@ -156,16 +157,27 @@ export default function ChatPage() {
       void refetchConversations();
     });
 
-    socket.on("typing_status", ({ userId, isTyping, conversationId }) => {
-      if (conversationId === selectedConversationId) {
-        setTypingUsers((prev) => {
-          const next = new Set(prev);
-          if (isTyping) next.add(userId);
-          else next.delete(userId);
-          return next;
-        });
-      }
-    });
+    socket.on(
+      "typing_status",
+      ({
+        userId,
+        isTyping,
+        conversationId,
+      }: {
+        userId: string;
+        isTyping: boolean;
+        conversationId: string;
+      }) => {
+        if (conversationId === selectedConversationId) {
+          setTypingUsers((prev) => {
+            const next = new Set(prev);
+            if (isTyping) next.add(userId);
+            else next.delete(userId);
+            return next;
+          });
+        }
+      },
+    );
 
     return () => {
       socket.off("new_message");
@@ -335,10 +347,11 @@ export default function ChatPage() {
                     <p
                       className={`truncate text-sm ${isUnread ? "font-semibold text-white" : "text-gray-500"}`}
                     >
-                      {lastMessage?.content ||
-                        (lastMessage?.attachmentUrl
+                      {lastMessage?.content
+                        ? lastMessage.content
+                        : lastMessage?.attachmentUrl
                           ? "Sent an image"
-                          : "No messages yet")}
+                          : "No messages yet"}
                     </p>
                   </div>
                 </div>
@@ -435,9 +448,11 @@ export default function ChatPage() {
                             }`}
                           >
                             {message.attachmentUrl && (
-                              <img
+                              <Image
                                 src={message.attachmentUrl}
                                 alt="Attachment"
+                                width={300}
+                                height={200}
                                 className="mb-2 max-h-60 rounded-lg object-cover"
                               />
                             )}
