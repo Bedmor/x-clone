@@ -1,7 +1,41 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import Ably from "ably";
 
 export const chatRouter = createTRPCRouter({
+  sendMessage: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        content: z.string(),
+        attachmentUrl: z.string().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const message = await ctx.db.message.create({
+        data: {
+          content: input.content,
+          attachmentUrl: input.attachmentUrl,
+          conversationId: input.conversationId,
+          senderId: ctx.session.user.id,
+        },
+        include: {
+          sender: true,
+        },
+      });
+
+      // Publish to Ably
+      if (process.env.ABLY_API_KEY) {
+        const ably = new Ably.Rest(process.env.ABLY_API_KEY);
+        const channel = ably.channels.get(
+          `conversation-${input.conversationId}`,
+        );
+        await channel.publish("new_message", message);
+      }
+
+      return message;
+    }),
+
   getConversations: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.conversation.findMany({
       where: {

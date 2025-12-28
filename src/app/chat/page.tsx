@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
-import { io, type Socket } from "socket.io-client";
+import Ably from "ably";
 import { UserAvatar } from "../_components/UserAvatar";
 import { formatDistanceToNow } from "date-fns";
 import { Send, MailPlus, Image as ImageIcon, Loader2 } from "lucide-react";
@@ -17,21 +17,6 @@ import { type AppRouter } from "~/server/api/root";
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
 
-type Message = {
-  id: string;
-  content: string;
-  attachmentUrl: string | null;
-  createdAt: Date;
-  senderId: string;
-  conversationId: string;
-  sender: {
-    id: string;
-    name: string | null;
-    image: string | null;
-    username: string | null;
-  };
-};
-
 export default function ChatPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -40,7 +25,7 @@ export default function ChatPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
   >(initialConversationId);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [ablyClient, setAblyClient] = useState<Ably.Realtime | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +64,8 @@ export default function ChatPage() {
     },
   });
 
+  const sendMessageMutation = api.chat.sendMessage.useMutation();
+
   const handleSelectUser = (userId: string) => {
     createConversation.mutate({ participantId: userId });
   };
@@ -112,128 +99,121 @@ export default function ChatPage() {
     }
   }, [selectedConversationId, markConversationAsRead]);
 
-  // Socket connection
+  // Ably connection
   useEffect(() => {
-    const newSocket = io(
-      process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001",
-    );
-    setSocket(newSocket);
+    if (!session?.user?.id) return;
+
+    const client = new Ably.Realtime({ authUrl: "/api/ably" });
+    setAblyClient(client);
 
     return () => {
-      newSocket.disconnect();
+      client.close();
     };
-  }, []);
+  }, [session?.user?.id]);
 
-  // Register user and handle online status
+  // Handle Online Status (Global Presence)
   useEffect(() => {
-    if (!socket || !session?.user?.id) return;
+    if (!ablyClient || !session?.user?.id) return;
 
-    socket.emit("register_user", session.user.id);
+    const presenceChannel = ablyClient.channels.get("global-presence");
 
-    socket.on("user_online", (userId: string) => {
-      setOnlineUsers((prev) => new Set(prev).add(userId));
+    const updateOnlineUsers = async () => {
+      const members = await presenceChannel.presence.get();
+      const userIds = new Set(members.map((m) => m.clientId));
+      setOnlineUsers(userIds);
+    };
+
+    void presenceChannel.presence.enter();
+    void presenceChannel.presence.subscribe(
+      "enter",
+      () => void updateOnlineUsers(),
+    );
+    void presenceChannel.presence.subscribe(
+      "leave",
+      () => void updateOnlineUsers(),
+    );
+    void presenceChannel.presence.subscribe(
+      "update",
+      () => void updateOnlineUsers(),
+    );
+
+    // Initial fetch
+    void updateOnlineUsers();
+
+    return () => {
+      void presenceChannel.presence.leave();
+      presenceChannel.presence.unsubscribe();
+      presenceChannel.unsubscribe();
+    };
+  }, [ablyClient, session?.user?.id]);
+
+  // Handle Messages and Typing
+  useEffect(() => {
+    if (!ablyClient || !selectedConversationId) return;
+
+    const channel = ablyClient.channels.get(
+      `conversation-${selectedConversationId}`,
+    );
+
+    // Subscribe to new messages
+    void channel.subscribe("new_message", (message) => {
+      const typedMessage = message.data as unknown as ChatMessage;
+
+      // Manually update the cache
+      utils.chat.getMessages.setInfiniteData(
+        { conversationId: selectedConversationId, limit: 20 },
+        (oldData) => {
+          if (!oldData) {
+            return {
+              pages: [
+                {
+                  messages: [typedMessage],
+                  nextCursor: undefined,
+                },
+              ],
+              pageParams: [],
+            };
+          }
+
+          const newPages = [...oldData.pages];
+          const firstPage = newPages[0];
+
+          if (firstPage) {
+            newPages[0] = {
+              ...firstPage,
+              messages: [typedMessage, ...firstPage.messages],
+            };
+          }
+
+          return {
+            ...oldData,
+            pages: newPages,
+          };
+        },
+      );
+      scrollToBottom();
+      void refetchConversations();
     });
 
-    socket.on("user_offline", (userId: string) => {
-      setOnlineUsers((prev) => {
+    // Subscribe to typing events
+    void channel.subscribe("typing", (message) => {
+      const { userId, isTyping } = message.data as {
+        userId: string;
+        isTyping: boolean;
+      };
+      setTypingUsers((prev) => {
         const next = new Set(prev);
-        next.delete(userId);
+        if (isTyping) next.add(userId);
+        else next.delete(userId);
         return next;
       });
     });
 
-    socket.on("online_users", (userIds: string[]) => {
-      setOnlineUsers(new Set(userIds));
-    });
-
     return () => {
-      socket.off("user_online");
-      socket.off("user_offline");
-      socket.off("online_users");
+      channel.unsubscribe();
+      setTypingUsers(new Set());
     };
-  }, [socket, session?.user?.id]);
-
-  // Handle messages and typing
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on("new_message", (message: Message) => {
-      if (message.conversationId === selectedConversationId) {
-        // Manually update the cache to avoid full refetch
-        utils.chat.getMessages.setInfiniteData(
-          { conversationId: selectedConversationId, limit: 20 },
-          (oldData) => {
-            // We need to cast the message to ChatMessage because the TRPC type includes all User fields
-            // but our socket message only includes the basic sender info.
-            const typedMessage = message as unknown as ChatMessage;
-
-            if (!oldData) {
-              return {
-                pages: [
-                  {
-                    messages: [typedMessage],
-                    nextCursor: undefined,
-                  },
-                ],
-                pageParams: [],
-              };
-            }
-
-            const newPages = [...oldData.pages];
-            const firstPage = newPages[0];
-
-            if (firstPage) {
-              newPages[0] = {
-                ...firstPage,
-                messages: [typedMessage, ...firstPage.messages],
-              };
-            }
-
-            return {
-              ...oldData,
-              pages: newPages,
-            };
-          },
-        );
-        scrollToBottom();
-      }
-      void refetchConversations();
-    });
-
-    socket.on(
-      "typing_status",
-      ({
-        userId,
-        isTyping,
-        conversationId,
-      }: {
-        userId: string;
-        isTyping: boolean;
-        conversationId: string;
-      }) => {
-        if (conversationId === selectedConversationId) {
-          setTypingUsers((prev) => {
-            const next = new Set(prev);
-            if (isTyping) next.add(userId);
-            else next.delete(userId);
-            return next;
-          });
-        }
-      },
-    );
-
-    return () => {
-      socket.off("new_message");
-      socket.off("typing_status");
-    };
-  }, [socket, selectedConversationId, refetchConversations, utils]);
-
-  useEffect(() => {
-    if (socket && selectedConversationId) {
-      socket.emit("join_conversation", selectedConversationId);
-      setTypingUsers(new Set()); // Reset typing status on switch
-    }
-  }, [socket, selectedConversationId]);
+  }, [ablyClient, selectedConversationId, utils, refetchConversations]);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -245,19 +225,17 @@ export default function ChatPage() {
   };
 
   const handleTyping = () => {
-    if (!socket || !selectedConversationId || !session) return;
+    if (!ablyClient || !selectedConversationId || !session) return;
 
-    socket.emit("typing", {
-      conversationId: selectedConversationId,
-      userId: session.user.id,
-      isTyping: true,
-    });
+    const channel = ablyClient.channels.get(
+      `conversation-${selectedConversationId}`,
+    );
+    void channel.publish("typing", { userId: session.user.id, isTyping: true });
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit("typing", {
-        conversationId: selectedConversationId,
+      void channel.publish("typing", {
         userId: session.user.id,
         isTyping: false,
       });
@@ -268,34 +246,40 @@ export default function ChatPage() {
     e.preventDefault();
     if (
       (!newMessage.trim() && !isUploading) ||
-      !socket ||
       !selectedConversationId ||
       !session
     )
       return;
 
-    const messageData = {
-      conversationId: selectedConversationId,
-      content: newMessage,
-      senderId: session.user.id,
-      attachmentUrl: null as string | null,
-    };
-
-    socket.emit("send_message", messageData);
-    setNewMessage("");
+    const content = newMessage;
+    setNewMessage(""); // Optimistic clear
 
     // Stop typing immediately
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    socket.emit("typing", {
-      conversationId: selectedConversationId,
-      userId: session.user.id,
-      isTyping: false,
-    });
+    if (ablyClient) {
+      const channel = ablyClient.channels.get(
+        `conversation-${selectedConversationId}`,
+      );
+      void channel.publish("typing", {
+        userId: session.user.id,
+        isTyping: false,
+      });
+    }
+
+    try {
+      await sendMessageMutation.mutateAsync({
+        conversationId: selectedConversationId,
+        content,
+        attachmentUrl: null,
+      });
+    } catch (error) {
+      console.error("Failed to send message", error);
+      // Ideally restore message to input on error
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0] || !socket || !selectedConversationId || !session)
-      return;
+    if (!e.target.files?.[0] || !selectedConversationId || !session) return;
 
     const file = e.target.files[0];
     setIsUploading(true);
@@ -306,14 +290,11 @@ export default function ChatPage() {
         handleUploadUrl: "/api/upload",
       });
 
-      const messageData = {
+      await sendMessageMutation.mutateAsync({
         conversationId: selectedConversationId,
-        content: "", // Empty content for image-only message
-        senderId: session.user.id,
+        content: "",
         attachmentUrl: blob.url,
-      };
-
-      socket.emit("send_message", messageData);
+      });
     } catch (error) {
       console.error("Upload failed:", error);
       alert("Failed to upload image");

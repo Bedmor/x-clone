@@ -6,10 +6,11 @@ A full-stack clone of X (formerly Twitter) built with the [T3 Stack](https://cre
 
 - **Authentication**: Secure login via Discord, Google, or Credentials using NextAuth.js.
 - **Posting**: Create text-based posts, reply to others, and repost content.
+- **Real-time Chat**: Private messaging with typing indicators, online presence, read receipts, and media support powered by Ably.
 - **Interactions**: Like posts and follow other users.
 - **Notifications**: Real-time-like notifications for likes, replies, mentions, and follows.
 - **Profiles**: Customizable user profiles with bio, location, and website.
-- **Image Upload**: Support for user avatars and header images.
+- **Image Upload**: Support for user avatars, header images, and chat media using Vercel Blob.
 - **Responsive Design**: Mobile-friendly UI built with Tailwind CSS.
 
 ## Tech Stack
@@ -21,6 +22,8 @@ A full-stack clone of X (formerly Twitter) built with the [T3 Stack](https://cre
 - **ORM**: [Prisma](https://www.prisma.io)
 - **API**: [tRPC](https://trpc.io)
 - **Authentication**: [NextAuth.js](https://next-auth.js.org)
+- **Real-time**: [Ably](https://ably.com)
+- **Storage**: [Vercel Blob](https://vercel.com/docs/storage/vercel-blob)
 - **Deployment**: Vercel (recommended)
 
 ## Getting Started
@@ -67,6 +70,12 @@ A full-stack clone of X (formerly Twitter) built with the [T3 Stack](https://cre
    AUTH_CREDENTIALS_EMAIL="admin@example.com"
    AUTH_CREDENTIALS_PASSWORD="password"
    AUTH_CREDENTIALS_NAME="Admin"
+
+   # Real-time Chat (Ably)
+   ABLY_API_KEY="your-ably-api-key"
+
+   # File Storage (Vercel Blob)
+   BLOB_READ_WRITE_TOKEN="your-vercel-blob-token"
    ```
 
 ### Database Setup
