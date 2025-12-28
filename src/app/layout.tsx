@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Schibsted_Grotesk } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "~/server/auth";
 
@@ -15,9 +15,9 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.png" }],
 };
 
-const geist = Geist({
+const schibstedGrotesk = Schibsted_Grotesk({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-schibsted-grotesk",
 });
 
 export default async function RootLayout({
@@ -26,7 +26,7 @@ export default async function RootLayout({
   const session = await auth();
 
   return (
-    <html lang="en" className={`${geist.variable}`}>
+    <html lang="en" className={`${schibstedGrotesk.variable}`}>
       <body className="bg-black text-white">
         <SessionProvider session={session}>
           <TRPCReactProvider>

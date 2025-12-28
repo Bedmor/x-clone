@@ -79,6 +79,21 @@ export const userRouter = createTRPCRouter({
       });
     }),
 
+  searchUsers: protectedProcedure
+    .input(z.object({ query: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!input.query) return [];
+      return ctx.db.user.findMany({
+        where: {
+          OR: [
+            { name: { contains: input.query, mode: "insensitive" } },
+            { username: { contains: input.query, mode: "insensitive" } },
+          ],
+        },
+        take: 10,
+      });
+    }),
+
   getPosts: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
