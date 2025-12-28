@@ -41,7 +41,7 @@ export default function ChatPage() {
     onSuccess: (conversation) => {
       setSelectedConversationId(conversation.id);
       setShowNewChatModal(false);
-      refetchConversations();
+      void refetchConversations();
     },
   });
 
@@ -64,7 +64,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     const newSocket = io(
-      process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001",
+      process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001",
     );
     setSocket(newSocket);
 
@@ -84,7 +84,7 @@ export default function ChatPage() {
         scrollToBottom();
       }
       // Also update conversation list last message preview if needed
-      refetchConversations();
+      void refetchConversations();
     });
 
     return () => {
@@ -160,7 +160,7 @@ export default function ChatPage() {
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center justify-between">
                       <span className="truncate font-bold">
-                        {otherParticipant?.name || "Unknown User"}
+                        {otherParticipant?.name ?? "Unknown User"}
                       </span>
                       {lastMessage && (
                         <span className="text-xs text-gray-500">
@@ -169,7 +169,7 @@ export default function ChatPage() {
                       )}
                     </div>
                     <p className="truncate text-sm text-gray-500">
-                      {lastMessage?.content || "No messages yet"}
+                      {lastMessage?.content ?? "No messages yet"}
                     </p>
                   </div>
                 </div>
@@ -206,7 +206,7 @@ export default function ChatPage() {
                         className="h-10 w-10"
                       />
                       <span className="font-bold">
-                        {otherParticipant?.name || "Unknown User"}
+                        {otherParticipant?.name ?? "Unknown User"}
                       </span>
                     </>
                   );

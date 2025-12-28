@@ -14,13 +14,13 @@ const io = new Server(httpServer, {
   },
 });
 
-const PORT = process.env.WS_PORT || 3001;
+const PORT = process.env.WS_PORT ?? 3001;
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  socket.on("join_conversation", (conversationId) => {
-    socket.join(conversationId);
+  socket.on("join_conversation", async (conversationId) => {
+    await socket.join(conversationId);
     console.log(`User ${socket.id} joined conversation ${conversationId}`);
   });
 
