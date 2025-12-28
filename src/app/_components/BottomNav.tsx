@@ -8,6 +8,7 @@ import {
   LogIn,
   UserPlus,
   Bell,
+  Mail,
 } from "lucide-react";
 
 export async function BottomNav() {
@@ -28,6 +29,12 @@ export async function BottomNav() {
             className="flex flex-col items-center justify-center rounded-full p-2 hover:bg-white/10"
           >
             <Bell className="h-6 w-6" />
+          </Link>
+          <Link
+            href="/chat"
+            className="flex flex-col items-center justify-center rounded-full p-2 hover:bg-white/10"
+          >
+            <Mail className="h-6 w-6" />
           </Link>
           <Link
             href={`/profile/${session.user.id}`}

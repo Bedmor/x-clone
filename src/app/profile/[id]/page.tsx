@@ -7,6 +7,7 @@ import { auth } from "~/server/auth";
 import { ProfileFeed } from "./ProfileFeed";
 import { EditProfileButton } from "./EditProfileButton";
 import { ProfileStats } from "./ProfileStats";
+import { MessageButton } from "./MessageButton";
 
 export default async function ProfilePage({
   params,
@@ -52,10 +53,13 @@ export default async function ProfilePage({
               <EditProfileButton user={user} />
             ) : (
               session && (
-                <FollowButton
-                  userId={user.id}
-                  initialIsFollowing={user.isFollowing}
-                />
+                <div className="flex gap-2">
+                  <MessageButton userId={user.id} />
+                  <FollowButton
+                    userId={user.id}
+                    initialIsFollowing={user.isFollowing}
+                  />
+                </div>
               )
             )}
           </div>

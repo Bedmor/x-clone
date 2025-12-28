@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "~/server/auth";
-import { Home, User, Settings, LogOut, Bell } from "lucide-react";
+import { Home, User, Settings, LogOut, Bell, Mail } from "lucide-react";
 
 export async function Sidebar() {
   const session = await auth();
@@ -24,6 +24,13 @@ export async function Sidebar() {
             >
               <Bell className="h-7 w-7" />
               <span>Notifications</span>
+            </Link>
+            <Link
+              href="/chat"
+              className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+            >
+              <Mail className="h-7 w-7" />
+              <span>Messages</span>
             </Link>
             <Link
               href={`/profile/${session.user.id}`}

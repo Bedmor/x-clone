@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
@@ -25,14 +26,23 @@ type Message = {
 
 export default function ChatPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const initialConversationId = searchParams.get("conversationId");
+
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
-  >(null);
+  >(initialConversationId);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (initialConversationId) {
+      setSelectedConversationId(initialConversationId);
+    }
+  }, [initialConversationId]);
 
   const { data: conversations, refetch: refetchConversations } =
     api.chat.getConversations.useQuery();
@@ -99,7 +109,12 @@ export default function ChatPage() {
   }, [socket, selectedConversationId]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -215,7 +230,10 @@ export default function ChatPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 overflow-y-auto p-4"
+            >
               {isLoadingMessages ? (
                 <div className="text-center">Loading messages...</div>
               ) : (
@@ -244,7 +262,6 @@ export default function ChatPage() {
                       </div>
                     );
                   })}
-                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
