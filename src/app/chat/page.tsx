@@ -11,6 +11,11 @@ import { Send, MailPlus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { NewChatModal } from "./NewChatModal";
 import { upload } from "@vercel/blob/client";
 import Image from "next/image";
+import { type inferRouterOutputs } from "@trpc/server";
+import { type AppRouter } from "~/server/api/root";
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
 
 type Message = {
   id: string;
@@ -158,11 +163,15 @@ export default function ChatPage() {
         utils.chat.getMessages.setInfiniteData(
           { conversationId: selectedConversationId, limit: 20 },
           (oldData) => {
+            // We need to cast the message to ChatMessage because the TRPC type includes all User fields
+            // but our socket message only includes the basic sender info.
+            const typedMessage = message as unknown as ChatMessage;
+
             if (!oldData) {
               return {
                 pages: [
                   {
-                    messages: [message],
+                    messages: [typedMessage],
                     nextCursor: undefined,
                   },
                 ],
@@ -176,7 +185,7 @@ export default function ChatPage() {
             if (firstPage) {
               newPages[0] = {
                 ...firstPage,
-                messages: [message, ...firstPage.messages],
+                messages: [typedMessage, ...firstPage.messages],
               };
             }
 
@@ -381,7 +390,8 @@ export default function ChatPage() {
                     <p
                       className={`truncate text-sm ${isUnread ? "font-semibold text-white" : "text-gray-500"}`}
                     >
-                      {lastMessage?.content ??
+                      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+                      {lastMessage?.content ||
                         (lastMessage?.attachmentUrl
                           ? "Sent an image"
                           : "No messages yet")}
