@@ -210,6 +210,7 @@ exports.Prisma.ConversationParticipantScalarFieldEnum = {
 exports.Prisma.MessageScalarFieldEnum = {
   id: 'id',
   content: 'content',
+  attachmentUrl: 'attachmentUrl',
   createdAt: 'createdAt',
   senderId: 'senderId',
   conversationId: 'conversationId'

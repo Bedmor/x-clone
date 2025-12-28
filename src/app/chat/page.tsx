@@ -1,18 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
 import { UserAvatar } from "../_components/UserAvatar";
 import { formatDistanceToNow } from "date-fns";
-import { Send, MailPlus } from "lucide-react";
+import { Send, MailPlus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { NewChatModal } from "./NewChatModal";
+import { upload } from "@vercel/blob/client";
 
 type Message = {
   id: string;
   content: string;
+  attachmentUrl: string | null;
   createdAt: Date;
   senderId: string;
   conversationId: string;
@@ -33,10 +35,18 @@ export default function ChatPage() {
     string | null
   >(initialConversationId);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // New states
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const utils = api.useUtils();
 
   useEffect(() => {
     if (initialConversationId) {
@@ -45,7 +55,9 @@ export default function ChatPage() {
   }, [initialConversationId]);
 
   const { data: conversations, refetch: refetchConversations } =
-    api.chat.getConversations.useQuery();
+    api.chat.getConversations.useQuery(undefined, {
+      refetchInterval: 5000, // Poll for unread updates
+    });
 
   const createConversation = api.chat.createConversation.useMutation({
     onSuccess: (conversation) => {
@@ -55,23 +67,42 @@ export default function ChatPage() {
     },
   });
 
+  const markAsRead = api.chat.markAsRead.useMutation({
+    onSuccess: () => {
+      void utils.chat.getConversations.invalidate();
+    },
+  });
+
   const handleSelectUser = (userId: string) => {
     createConversation.mutate({ participantId: userId });
   };
 
-  const { data: initialMessages, isLoading: isLoadingMessages } =
-    api.chat.getMessages.useQuery(
-      { conversationId: selectedConversationId! },
-      { enabled: !!selectedConversationId },
-    );
+  // Infinite Query for messages
+  const {
+    data: messagesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isLoadingMessages,
+  } = api.chat.getMessages.useInfiniteQuery(
+    { conversationId: selectedConversationId!, limit: 20 },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      enabled: !!selectedConversationId,
+      refetchOnWindowFocus: false,
+    },
+  );
 
+  const messages = messagesData?.pages.flatMap((page) => page.messages) ?? [];
+
+  // Mark as read when conversation opens
   useEffect(() => {
-    if (initialMessages) {
-      setMessages(initialMessages);
-      scrollToBottom();
+    if (selectedConversationId) {
+      markAsRead.mutate({ conversationId: selectedConversationId });
     }
-  }, [initialMessages]);
+  }, [selectedConversationId]);
 
+  // Socket connection
   useEffect(() => {
     const newSocket = io(
       process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001",
@@ -83,28 +114,69 @@ export default function ChatPage() {
     };
   }, []);
 
+  // Register user and handle online status
+  useEffect(() => {
+    if (!socket || !session?.user?.id) return;
+
+    socket.emit("register_user", session.user.id);
+
+    socket.on("user_online", (userId: string) => {
+      setOnlineUsers((prev) => new Set(prev).add(userId));
+    });
+
+    socket.on("user_offline", (userId: string) => {
+      setOnlineUsers((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    });
+
+    socket.on("online_users", (userIds: string[]) => {
+      setOnlineUsers(new Set(userIds));
+    });
+
+    return () => {
+      socket.off("user_online");
+      socket.off("user_offline");
+      socket.off("online_users");
+    };
+  }, [socket, session?.user?.id]);
+
+  // Handle messages and typing
   useEffect(() => {
     if (!socket) return;
 
     socket.on("new_message", (message: Message) => {
       if (message.conversationId === selectedConversationId) {
-        // Wait, message type doesn't have conversationId in my definition above but it comes from server
-        // Actually the server sends the full message object which includes conversationId
-        setMessages((prev) => [...prev, message]);
+        // Optimistically update or invalidate
+        void utils.chat.getMessages.invalidate();
         scrollToBottom();
       }
-      // Also update conversation list last message preview if needed
       void refetchConversations();
+    });
+
+    socket.on("typing_status", ({ userId, isTyping, conversationId }) => {
+      if (conversationId === selectedConversationId) {
+        setTypingUsers((prev) => {
+          const next = new Set(prev);
+          if (isTyping) next.add(userId);
+          else next.delete(userId);
+          return next;
+        });
+      }
     });
 
     return () => {
       socket.off("new_message");
+      socket.off("typing_status");
     };
-  }, [socket, selectedConversationId, refetchConversations]);
+  }, [socket, selectedConversationId, refetchConversations, utils]);
 
   useEffect(() => {
     if (socket && selectedConversationId) {
       socket.emit("join_conversation", selectedConversationId);
+      setTypingUsers(new Set()); // Reset typing status on switch
     }
   }, [socket, selectedConversationId]);
 
@@ -117,19 +189,83 @@ export default function ChatPage() {
     }
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleTyping = () => {
+    if (!socket || !selectedConversationId || !session) return;
+
+    socket.emit("typing", {
+      conversationId: selectedConversationId,
+      userId: session.user.id,
+      isTyping: true,
+    });
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("typing", {
+        conversationId: selectedConversationId,
+        userId: session.user.id,
+        isTyping: false,
+      });
+    }, 2000);
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !socket || !selectedConversationId || !session)
+    if (
+      (!newMessage.trim() && !isUploading) ||
+      !socket ||
+      !selectedConversationId ||
+      !session
+    )
       return;
 
     const messageData = {
       conversationId: selectedConversationId,
       content: newMessage,
       senderId: session.user.id,
+      attachmentUrl: null as string | null,
     };
 
     socket.emit("send_message", messageData);
     setNewMessage("");
+
+    // Stop typing immediately
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit("typing", {
+      conversationId: selectedConversationId,
+      userId: session.user.id,
+      isTyping: false,
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0] || !socket || !selectedConversationId || !session)
+      return;
+
+    const file = e.target.files[0];
+    setIsUploading(true);
+
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+      });
+
+      const messageData = {
+        conversationId: selectedConversationId,
+        content: "", // Empty content for image-only message
+        senderId: session.user.id,
+        attachmentUrl: blob.url,
+      };
+
+      socket.emit("send_message", messageData);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("Failed to upload image");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   if (!session) {
@@ -155,6 +291,12 @@ export default function ChatPage() {
               (p) => p.userId !== session.user.id,
             )?.user;
             const lastMessage = conversation.messages[0];
+            const isUnread =
+              conversation.participants.find(
+                (p) => p.userId === session.user.id,
+              )?.hasSeenLatest === false;
+            const isOnline =
+              otherParticipant && onlineUsers.has(otherParticipant.id);
 
             return (
               <div
@@ -164,17 +306,24 @@ export default function ChatPage() {
                   selectedConversationId === conversation.id
                     ? "bg-white/10"
                     : ""
-                }`}
+                } ${isUnread ? "bg-blue-500/10" : ""}`}
               >
                 <div className="flex items-center gap-3">
-                  <UserAvatar
-                    src={otherParticipant?.image}
-                    alt={otherParticipant?.name}
-                    className="h-12 w-12"
-                  />
+                  <div className="relative">
+                    <UserAvatar
+                      src={otherParticipant?.image}
+                      alt={otherParticipant?.name}
+                      className="h-12 w-12"
+                    />
+                    {isOnline && (
+                      <span className="absolute right-0 bottom-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-black" />
+                    )}
+                  </div>
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center justify-between">
-                      <span className="truncate font-bold">
+                      <span
+                        className={`truncate ${isUnread ? "font-bold text-white" : "text-gray-300"}`}
+                      >
                         {otherParticipant?.name ?? "Unknown User"}
                       </span>
                       {lastMessage && (
@@ -183,8 +332,13 @@ export default function ChatPage() {
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-sm text-gray-500">
-                      {lastMessage?.content ?? "No messages yet"}
+                    <p
+                      className={`truncate text-sm ${isUnread ? "font-semibold text-white" : "text-gray-500"}`}
+                    >
+                      {lastMessage?.content ||
+                        (lastMessage?.attachmentUrl
+                          ? "Sent an image"
+                          : "No messages yet")}
                     </p>
                   </div>
                 </div>
@@ -213,16 +367,29 @@ export default function ChatPage() {
                   const otherParticipant = conversation?.participants.find(
                     (p) => p.userId !== session.user.id,
                   )?.user;
+                  const isOnline =
+                    otherParticipant && onlineUsers.has(otherParticipant.id);
+
                   return (
                     <>
-                      <UserAvatar
-                        src={otherParticipant?.image}
-                        alt={otherParticipant?.name}
-                        className="h-10 w-10"
-                      />
-                      <span className="font-bold">
-                        {otherParticipant?.name ?? "Unknown User"}
-                      </span>
+                      <div className="relative">
+                        <UserAvatar
+                          src={otherParticipant?.image}
+                          alt={otherParticipant?.name}
+                          className="h-10 w-10"
+                        />
+                        {isOnline && (
+                          <span className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-black" />
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold">
+                          {otherParticipant?.name ?? "Unknown User"}
+                        </span>
+                        {isOnline && (
+                          <span className="text-xs text-green-500">Online</span>
+                        )}
+                      </div>
                     </>
                   );
                 })()}
@@ -234,34 +401,68 @@ export default function ChatPage() {
               ref={messagesContainerRef}
               className="flex-1 overflow-y-auto p-4"
             >
+              {hasNextPage && (
+                <div className="flex justify-center py-2">
+                  <button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    {isFetchingNextPage ? "Loading..." : "Load older messages"}
+                  </button>
+                </div>
+              )}
+
               {isLoadingMessages ? (
                 <div className="text-center">Loading messages...</div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {messages.map((message) => {
-                    const isMe = message.senderId === session.user.id;
-                    return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-                      >
+                  {messages
+                    .slice()
+                    .reverse()
+                    .map((message) => {
+                      const isMe = message.senderId === session.user.id;
+                      return (
                         <div
-                          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                            isMe
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-800 text-white"
-                          }`}
+                          key={message.id}
+                          className={`flex ${isMe ? "justify-end" : "justify-start"}`}
                         >
-                          <p>{message.content}</p>
-                          <span className="text-xs opacity-70">
-                            {formatDistanceToNow(new Date(message.createdAt), {
-                              addSuffix: true,
-                            })}
-                          </span>
+                          <div
+                            className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                              isMe
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-800 text-white"
+                            }`}
+                          >
+                            {message.attachmentUrl && (
+                              <img
+                                src={message.attachmentUrl}
+                                alt="Attachment"
+                                className="mb-2 max-h-60 rounded-lg object-cover"
+                              />
+                            )}
+                            {message.content && <p>{message.content}</p>}
+                            <span className="mt-1 block text-xs opacity-70">
+                              {formatDistanceToNow(
+                                new Date(message.createdAt),
+                                {
+                                  addSuffix: true,
+                                },
+                              )}
+                            </span>
+                          </div>
                         </div>
+                      );
+                    })}
+
+                  {/* Typing Indicator */}
+                  {typingUsers.size > 0 && (
+                    <div className="flex justify-start">
+                      <div className="rounded-2xl bg-gray-800 px-4 py-2 text-sm text-gray-400 italic">
+                        Typing...
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -271,17 +472,40 @@ export default function ChatPage() {
               onSubmit={handleSendMessage}
               className="border-t border-white/20 p-4"
             >
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 text-blue-500 hover:text-blue-400"
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <ImageIcon size={20} />
+                  )}
+                </button>
+
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    handleTyping();
+                  }}
                   placeholder="Type a message..."
                   className="flex-1 rounded-full border border-white/20 bg-black px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
                 />
                 <button
                   type="submit"
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() && !isUploading}
                   className="rounded-full bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:opacity-50"
                 >
                   <Send size={20} />

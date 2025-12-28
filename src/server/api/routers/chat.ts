@@ -31,17 +31,55 @@ export const chatRouter = createTRPCRouter({
   }),
 
   getMessages: protectedProcedure
-    .input(z.object({ conversationId: z.string() }))
+    .input(
+      z.object({
+        conversationId: z.string(),
+        cursor: z.string().nullish(),
+        limit: z.number().min(1).max(50).default(20),
+      }),
+    )
     .query(async ({ ctx, input }) => {
-      return ctx.db.message.findMany({
+      const limit = input.limit ?? 20;
+      const { cursor } = input;
+
+      const messages = await ctx.db.message.findMany({
         where: {
           conversationId: input.conversationId,
+        },
+        take: limit + 1,
+        cursor: cursor ? { id: cursor } : undefined,
+        orderBy: {
+          createdAt: "desc",
         },
         include: {
           sender: true,
         },
-        orderBy: {
-          createdAt: "asc",
+      });
+
+      let nextCursor: typeof cursor | undefined = undefined;
+      if (messages.length > limit) {
+        const nextItem = messages.pop();
+        nextCursor = nextItem!.id;
+      }
+
+      return {
+        messages: messages.reverse(),
+        nextCursor,
+      };
+    }),
+
+  markAsRead: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.conversationParticipant.update({
+        where: {
+          userId_conversationId: {
+            userId: ctx.session.user.id,
+            conversationId: input.conversationId,
+          },
+        },
+        data: {
+          hasSeenLatest: true,
         },
       });
     }),

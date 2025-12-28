@@ -165,9 +165,10 @@ model ConversationParticipant {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  content       String
+  attachmentUrl String?
+  createdAt     DateTime @default(now())
 
   senderId String
   sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
