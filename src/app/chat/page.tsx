@@ -154,8 +154,38 @@ export default function ChatPage() {
 
     socket.on("new_message", (message: Message) => {
       if (message.conversationId === selectedConversationId) {
-        // Optimistically update or invalidate
-        void utils.chat.getMessages.invalidate();
+        // Manually update the cache to avoid full refetch
+        utils.chat.getMessages.setInfiniteData(
+          { conversationId: selectedConversationId, limit: 20 },
+          (oldData) => {
+            if (!oldData) {
+              return {
+                pages: [
+                  {
+                    messages: [message],
+                    nextCursor: undefined,
+                  },
+                ],
+                pageParams: [],
+              };
+            }
+
+            const newPages = [...oldData.pages];
+            const firstPage = newPages[0];
+
+            if (firstPage) {
+              newPages[0] = {
+                ...firstPage,
+                messages: [message, ...firstPage.messages],
+              };
+            }
+
+            return {
+              ...oldData,
+              pages: newPages,
+            };
+          },
+        );
         scrollToBottom();
       }
       void refetchConversations();
