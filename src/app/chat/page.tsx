@@ -385,6 +385,9 @@ export default function ChatPage() {
                   )?.user;
                   const isOnline =
                     otherParticipant && onlineUsers.has(otherParticipant.id);
+                  const otherParticipantData = conversation?.participants.find(
+                    (p) => p.userId !== session.user.id,
+                  );
 
                   return (
                     <>
@@ -402,8 +405,14 @@ export default function ChatPage() {
                         <span className="font-bold">
                           {otherParticipant?.name ?? "Unknown User"}
                         </span>
-                        {isOnline && (
+                        {isOnline ? (
                           <span className="text-xs text-green-500">Online</span>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            {otherParticipantData?.hasSeenLatest
+                              ? "Seen"
+                              : "Delivered"}
+                          </span>
                         )}
                       </div>
                     </>
@@ -457,11 +466,31 @@ export default function ChatPage() {
                             />
                           )}
                           {message.content && <p>{message.content}</p>}
-                          <span className="mt-1 block text-xs opacity-70">
-                            {formatDistanceToNow(new Date(message.createdAt), {
-                              addSuffix: true,
-                            })}
-                          </span>
+                          <div className="mt-1 flex items-center justify-end gap-1">
+                            <span className="text-xs opacity-70">
+                              {formatDistanceToNow(
+                                new Date(message.createdAt),
+                                {
+                                  addSuffix: true,
+                                },
+                              )}
+                            </span>
+                            {isMe &&
+                              message.id ===
+                                messages[messages.length - 1]?.id && (
+                                <span className="text-[10px] opacity-70">
+                                  {conversations
+                                    ?.find(
+                                      (c) => c.id === selectedConversationId,
+                                    )
+                                    ?.participants.find(
+                                      (p) => p.userId !== session.user.id,
+                                    )?.hasSeenLatest
+                                    ? " • Seen"
+                                    : " • Sent"}
+                                </span>
+                              )}
+                          </div>
                         </div>
                       </div>
                     );
