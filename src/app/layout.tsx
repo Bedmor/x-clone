@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: "X Clone",
   description: "A social media clone",
   icons: [{ rel: "icon", url: "/favicon.png" }],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "X Clone",
+  },
 };
 
 const schibstedGrotesk = Schibsted_Grotesk({
