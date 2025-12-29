@@ -4,8 +4,20 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { PostItem } from "~/app/_components/PostItem";
 import { PostSkeletonList } from "~/app/_components/PostSkeleton";
+import { type inferRouterOutputs } from "@trpc/server";
+import { type AppRouter } from "~/server/api/root";
+import { Pin } from "lucide-react";
 
-export function ProfileFeed({ userId }: { userId: string }) {
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type Post = RouterOutputs["user"]["getPosts"][number];
+
+export function ProfileFeed({
+  userId,
+  pinnedPost,
+}: {
+  userId: string;
+  pinnedPost?: Post | null;
+}) {
   const [tab, setTab] = useState<"posts" | "replies" | "likes">("posts");
 
   const postsQuery = api.user.getPosts.useQuery(
@@ -73,12 +85,27 @@ export function ProfileFeed({ userId }: { userId: string }) {
       </div>
       {isLoading ? (
         <PostSkeletonList />
-      ) : posts?.length === 0 ? (
-        <div className="p-4 text-center text-gray-500">
-          No items to display.
-        </div>
       ) : (
-        posts?.map((post) => <PostItem key={post.id} post={post} />)
+        <>
+          {tab === "posts" && pinnedPost && (
+            <div className="border-b border-white/20">
+              <div className="flex items-center gap-2 px-4 pt-2 text-xs font-bold text-gray-500">
+                <Pin size={12} className="fill-gray-500" />
+                <span>Pinned Post</span>
+              </div>
+              <PostItem post={pinnedPost} />
+            </div>
+          )}
+          {posts?.length === 0 && !pinnedPost ? (
+            <div className="p-4 text-center text-gray-500">
+              No items to display.
+            </div>
+          ) : (
+            posts
+              ?.filter((p) => p.id !== pinnedPost?.id)
+              .map((post) => <PostItem key={post.id} post={post} />)
+          )}
+        </>
       )}
     </div>
   );

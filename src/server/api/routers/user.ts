@@ -20,6 +20,38 @@ export const userRouter = createTRPCRouter({
           followedBy: {
             where: { followerId: ctx.session?.user?.id ?? "" },
           },
+          pinnedPost: {
+            include: {
+              createdBy: true,
+              likes: {
+                where: { userId: ctx.session?.user?.id ?? "" },
+              },
+              reposts: {
+                where: { createdById: ctx.session?.user?.id ?? "" },
+              },
+              pinnedBy: {
+                where: { id: ctx.session?.user?.id ?? "" },
+                select: { id: true },
+              },
+              _count: { select: { likes: true, replies: true, reposts: true } },
+              repostOf: {
+                include: {
+                  createdBy: true,
+                  likes: { where: { userId: ctx.session?.user?.id ?? "" } },
+                  reposts: {
+                    where: { createdById: ctx.session?.user?.id ?? "" },
+                  },
+                  pinnedBy: {
+                    where: { id: ctx.session?.user?.id ?? "" },
+                    select: { id: true },
+                  },
+                  _count: {
+                    select: { likes: true, replies: true, reposts: true },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -32,14 +64,64 @@ export const userRouter = createTRPCRouter({
           followedBy: {
             where: { followerId: ctx.session?.user?.id ?? "" },
           },
+          pinnedPost: {
+            include: {
+              createdBy: true,
+              likes: {
+                where: { userId: ctx.session?.user?.id ?? "" },
+              },
+              reposts: {
+                where: { createdById: ctx.session?.user?.id ?? "" },
+              },
+              pinnedBy: {
+                where: { id: ctx.session?.user?.id ?? "" },
+                select: { id: true },
+              },
+              _count: { select: { likes: true, replies: true, reposts: true } },
+              repostOf: {
+                include: {
+                  createdBy: true,
+                  likes: { where: { userId: ctx.session?.user?.id ?? "" } },
+                  reposts: {
+                    where: { createdById: ctx.session?.user?.id ?? "" },
+                  },
+                  pinnedBy: {
+                    where: { id: ctx.session?.user?.id ?? "" },
+                    select: { id: true },
+                  },
+                  _count: {
+                    select: { likes: true, replies: true, reposts: true },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
       if (!user) return null;
 
+      const pinnedPost = user.pinnedPost
+        ? {
+            ...user.pinnedPost,
+            isLiked: user.pinnedPost.likes.length > 0,
+            isReposted: user.pinnedPost.reposts.length > 0,
+            isPinned: user.pinnedPost.pinnedBy.length > 0,
+            repostOf: user.pinnedPost.repostOf
+              ? {
+                  ...user.pinnedPost.repostOf,
+                  isLiked: user.pinnedPost.repostOf.likes.length > 0,
+                  isReposted: user.pinnedPost.repostOf.reposts.length > 0,
+                  isPinned: user.pinnedPost.repostOf.pinnedBy.length > 0,
+                }
+              : null,
+          }
+        : null;
+
       return {
         ...user,
         isFollowing: user.followedBy.length > 0,
+        pinnedPost,
       };
     }),
 
@@ -79,6 +161,30 @@ export const userRouter = createTRPCRouter({
       });
     }),
 
+  pinPost: protectedProcedure
+    .input(z.object({ postId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const post = await ctx.db.post.findUnique({
+        where: { id: input.postId },
+      });
+
+      if (!post || post.createdById !== ctx.session.user.id) {
+        throw new Error("Unauthorized");
+      }
+
+      return ctx.db.user.update({
+        where: { id: ctx.session.user.id },
+        data: { pinnedPostId: input.postId },
+      });
+    }),
+
+  unpinPost: protectedProcedure.mutation(async ({ ctx }) => {
+    return ctx.db.user.update({
+      where: { id: ctx.session.user.id },
+      data: { pinnedPostId: null },
+    });
+  }),
+
   searchUsers: protectedProcedure
     .input(z.object({ query: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -108,11 +214,19 @@ export const userRouter = createTRPCRouter({
           reposts: {
             where: { createdById: ctx.session?.user?.id ?? "" },
           },
+          pinnedBy: {
+            where: { id: ctx.session?.user?.id ?? "" },
+            select: { id: true },
+          },
           repostOf: {
             include: {
               createdBy: true,
               likes: { where: { userId: ctx.session?.user?.id ?? "" } },
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
+              pinnedBy: {
+                where: { id: ctx.session?.user?.id ?? "" },
+                select: { id: true },
+              },
               _count: { select: { likes: true, replies: true, reposts: true } },
             },
           },
@@ -126,11 +240,13 @@ export const userRouter = createTRPCRouter({
         ...post,
         isLiked: post.likes.length > 0,
         isReposted: post.reposts.length > 0,
+        isPinned: post.pinnedBy.length > 0,
         repostOf: post.repostOf
           ? {
               ...post.repostOf,
               isLiked: post.repostOf.likes.length > 0,
               isReposted: post.repostOf.reposts.length > 0,
+              isPinned: post.repostOf.pinnedBy.length > 0,
             }
           : null,
       }));
@@ -150,11 +266,19 @@ export const userRouter = createTRPCRouter({
           reposts: {
             where: { createdById: ctx.session?.user?.id ?? "" },
           },
+          pinnedBy: {
+            where: { id: ctx.session?.user?.id ?? "" },
+            select: { id: true },
+          },
           repostOf: {
             include: {
               createdBy: true,
               likes: { where: { userId: ctx.session?.user?.id ?? "" } },
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
+              pinnedBy: {
+                where: { id: ctx.session?.user?.id ?? "" },
+                select: { id: true },
+              },
               _count: { select: { likes: true, replies: true, reposts: true } },
             },
           },
@@ -168,11 +292,13 @@ export const userRouter = createTRPCRouter({
         ...post,
         isLiked: post.likes.length > 0,
         isReposted: post.reposts.length > 0,
+        isPinned: post.pinnedBy.length > 0,
         repostOf: post.repostOf
           ? {
               ...post.repostOf,
               isLiked: post.repostOf.likes.length > 0,
               isReposted: post.repostOf.reposts.length > 0,
+              isPinned: post.repostOf.pinnedBy.length > 0,
             }
           : null,
       }));
@@ -192,12 +318,20 @@ export const userRouter = createTRPCRouter({
                 where: { userId: ctx.session?.user?.id ?? "" },
               },
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
+              pinnedBy: {
+                where: { id: ctx.session?.user?.id ?? "" },
+                select: { id: true },
+              },
               repostOf: {
                 include: {
                   createdBy: true,
                   likes: { where: { userId: ctx.session?.user?.id ?? "" } },
                   reposts: {
                     where: { createdById: ctx.session?.user?.id ?? "" },
+                  },
+                  pinnedBy: {
+                    where: { id: ctx.session?.user?.id ?? "" },
+                    select: { id: true },
                   },
                   _count: {
                     select: { likes: true, replies: true, reposts: true },
@@ -216,11 +350,13 @@ export const userRouter = createTRPCRouter({
         ...like.post,
         isLiked: like.post.likes.length > 0,
         isReposted: like.post.reposts.length > 0,
+        isPinned: like.post.pinnedBy.length > 0,
         repostOf: like.post.repostOf
           ? {
               ...like.post.repostOf,
               isLiked: like.post.repostOf.likes.length > 0,
               isReposted: like.post.repostOf.reposts.length > 0,
+              isPinned: like.post.repostOf.pinnedBy.length > 0,
             }
           : null,
       }));

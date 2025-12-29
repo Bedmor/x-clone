@@ -85,7 +85,7 @@ export default async function ProfilePage({
             followersCount={user._count.followedBy}
           />
         </div>
-        <ProfileFeed userId={user.id} />
+        <ProfileFeed userId={user.id} pinnedPost={user.pinnedPost} />
       </div>
     </HydrateClient>
   );

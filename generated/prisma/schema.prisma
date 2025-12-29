@@ -35,6 +35,7 @@ model Post {
   repostOfId    Int?
   repostOf      Post?          @relation("PostReposts", fields: [repostOfId], references: [id])
   reposts       Post[]         @relation("PostReposts")
+  pinnedBy      User[]         @relation("UserPinnedPost")
   notifications Notification[]
 
   @@index([createdById])
@@ -103,6 +104,8 @@ model User {
   location      String?
   website       String?
   lastSeen      DateTime?
+  pinnedPostId  Int?
+  pinnedPost    Post?     @relation("UserPinnedPost", fields: [pinnedPostId], references: [id])
   accounts      Account[]
   sessions      Session[]
   posts         Post[]

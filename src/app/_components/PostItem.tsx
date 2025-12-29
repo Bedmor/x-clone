@@ -6,7 +6,15 @@ import type { RouterOutputs } from "~/trpc/react";
 import Link from "next/link";
 import { ReplyModal } from "./ReplyModal";
 import { QuoteModal } from "./QuoteModal";
-import { Heart, MessageCircle, Repeat, Trash2 } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Repeat,
+  Trash2,
+  MoreHorizontal,
+  Pin,
+  PinOff,
+} from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { useSession } from "next-auth/react";
 
@@ -29,8 +37,27 @@ export function PostItem({ post }: { post: PostWithUser }) {
   const [repostsCount, setRepostsCount] = useState<number>(
     dp._count.reposts ?? 0,
   );
+  const [showMenu, setShowMenu] = useState(false);
 
   const utils = api.useUtils();
+
+  const pinPost = api.user.pinPost.useMutation({
+    onSuccess: () => {
+      void utils.user.getProfile.invalidate();
+      void utils.user.getPosts.invalidate();
+      void utils.post.getAll.invalidate();
+      setShowMenu(false);
+    },
+  });
+
+  const unpinPost = api.user.unpinPost.useMutation({
+    onSuccess: () => {
+      void utils.user.getProfile.invalidate();
+      void utils.user.getPosts.invalidate();
+      void utils.post.getAll.invalidate();
+      setShowMenu(false);
+    },
+  });
 
   const toggleLike = api.post.toggleLike.useMutation({
     onMutate: async () => {
@@ -220,18 +247,61 @@ export function PostItem({ post }: { post: PostWithUser }) {
                 )}
               </div>
               {session?.user?.id === dp.createdBy.id && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm("Are you sure you want to delete this post?")) {
-                      deletePost.mutate({ id: dp.id });
-                    }
-                  }}
-                  className="flex items-center gap-1 hover:text-red-500"
-                  disabled={deletePost.isPending}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="flex items-center gap-1 hover:text-blue-500"
+                  >
+                    <MoreHorizontal />
+                  </button>
+                  {showMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowMenu(false)}
+                      />
+                      <div className="absolute top-full right-0 z-20 mt-1 flex w-40 flex-col overflow-hidden rounded-lg border border-white/20 bg-black shadow-xl">
+                        <button
+                          onClick={() => {
+                            if (dp.isPinned) {
+                              unpinPost.mutate();
+                            } else {
+                              pinPost.mutate({ postId: dp.id });
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-left hover:bg-white/10"
+                        >
+                          {dp.isPinned ? (
+                            <>
+                              <PinOff size={16} /> Unpin
+                            </>
+                          ) : (
+                            <>
+                              <Pin size={16} /> Pin to profile
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(
+                                "Are you sure you want to delete this post?",
+                              )
+                            ) {
+                              deletePost.mutate({ id: dp.id });
+                            }
+                            setShowMenu(false);
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-left text-red-500 hover:bg-white/10"
+                          disabled={deletePost.isPending}
+                        >
+                          <Trash2 size={16} /> Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>

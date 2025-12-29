@@ -125,6 +125,10 @@ export const postRouter = createTRPCRouter({
         reposts: {
           where: { createdById: ctx.session?.user?.id ?? "" },
         },
+        pinnedBy: {
+          where: { id: ctx.session?.user?.id ?? "" },
+          select: { id: true },
+        },
         repostOf: {
           include: {
             createdBy: true,
@@ -133,6 +137,10 @@ export const postRouter = createTRPCRouter({
             },
             reposts: {
               where: { createdById: ctx.session?.user?.id ?? "" },
+            },
+            pinnedBy: {
+              where: { id: ctx.session?.user?.id ?? "" },
+              select: { id: true },
             },
             _count: {
               select: { likes: true, replies: true, reposts: true },
@@ -149,11 +157,13 @@ export const postRouter = createTRPCRouter({
       ...post,
       isLiked: post.likes.length > 0,
       isReposted: post.reposts.length > 0,
+      isPinned: post.pinnedBy.length > 0,
       repostOf: post.repostOf
         ? {
             ...post.repostOf,
             isLiked: post.repostOf.likes.length > 0,
             isReposted: post.repostOf.reposts.length > 0,
+            isPinned: post.repostOf.pinnedBy.length > 0,
           }
         : null,
     }));
@@ -172,6 +182,10 @@ export const postRouter = createTRPCRouter({
           reposts: {
             where: { createdById: ctx.session?.user?.id ?? "" },
           },
+          pinnedBy: {
+            where: { id: ctx.session?.user?.id ?? "" },
+            select: { id: true },
+          },
           repostOf: {
             include: {
               createdBy: true,
@@ -189,6 +203,10 @@ export const postRouter = createTRPCRouter({
               reposts: {
                 where: { createdById: ctx.session?.user?.id ?? "" },
               },
+              pinnedBy: {
+                where: { id: ctx.session?.user?.id ?? "" },
+                select: { id: true },
+              },
               _count: {
                 select: { likes: true, replies: true, reposts: true },
               },
@@ -204,10 +222,12 @@ export const postRouter = createTRPCRouter({
         ...post,
         isLiked: post.likes.length > 0,
         isReposted: post.reposts.length > 0,
+        isPinned: post.pinnedBy.length > 0,
         replies: post.replies.map((reply) => ({
           ...reply,
           isLiked: reply.likes.length > 0,
           isReposted: reply.reposts.length > 0,
+          isPinned: reply.pinnedBy.length > 0,
         })),
       };
     }),
