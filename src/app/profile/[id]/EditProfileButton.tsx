@@ -22,7 +22,7 @@ export function EditProfileButton({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="rounded-full border border-white/20 bg-transparent px-4 py-2 font-bold text-white hover:bg-white/10"
+        className="rounded-full border border-white/20 bg-transparent px-4 py-2 font-bold text-white backdrop-blur-md hover:bg-white/10"
       >
         Edit Profile
       </button>
