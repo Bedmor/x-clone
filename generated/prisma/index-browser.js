@@ -175,7 +175,8 @@ exports.Prisma.UserScalarFieldEnum = {
   username: 'username',
   bio: 'bio',
   location: 'location',
-  website: 'website'
+  website: 'website',
+  lastSeen: 'lastSeen'
 };
 
 exports.Prisma.NotificationScalarFieldEnum = {

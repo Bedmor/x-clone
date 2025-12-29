@@ -102,6 +102,7 @@ model User {
   bio           String?
   location      String?
   website       String?
+  lastSeen      DateTime?
   accounts      Account[]
   sessions      Session[]
   posts         Post[]

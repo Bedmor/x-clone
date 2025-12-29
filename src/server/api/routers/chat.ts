@@ -24,6 +24,35 @@ export const chatRouter = createTRPCRouter({
         },
       });
 
+      // Update conversation participants: set hasSeenLatest = false for others
+      await ctx.db.conversationParticipant.updateMany({
+        where: {
+          conversationId: input.conversationId,
+          userId: {
+            not: ctx.session.user.id,
+          },
+        },
+        data: {
+          hasSeenLatest: false,
+        },
+      });
+
+      // Update sender's hasSeenLatest to true and update lastSeen
+      await ctx.db.conversationParticipant.updateMany({
+        where: {
+          conversationId: input.conversationId,
+          userId: ctx.session.user.id,
+        },
+        data: {
+          hasSeenLatest: true,
+        },
+      });
+
+      await ctx.db.user.update({
+        where: { id: ctx.session.user.id },
+        data: { lastSeen: new Date() },
+      });
+
       // Publish to Ably
       if (process.env.ABLY_API_KEY) {
         const ably = new Ably.Rest(process.env.ABLY_API_KEY);
@@ -115,6 +144,11 @@ export const chatRouter = createTRPCRouter({
         data: {
           hasSeenLatest: true,
         },
+      });
+
+      await ctx.db.user.update({
+        where: { id: ctx.session.user.id },
+        data: { lastSeen: new Date() },
       });
     }),
 

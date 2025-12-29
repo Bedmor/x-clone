@@ -159,6 +159,11 @@ export default function ChatPage() {
     void channel.subscribe("new_message", (message) => {
       const typedMessage = message.data as unknown as ChatMessage;
 
+      // If the message is for the current conversation, mark it as read
+      if (typedMessage.conversationId === selectedConversationId) {
+        markConversationAsRead({ conversationId: selectedConversationId });
+      }
+
       // Manually update the cache
       utils.chat.getMessages.setInfiniteData(
         { conversationId: selectedConversationId, limit: 20 },
@@ -431,7 +436,12 @@ export default function ChatPage() {
                         ) : (
                           <span className="text-xs text-gray-500">
                             {otherParticipantData?.hasSeenLatest
-                              ? "Seen"
+                              ? otherParticipant?.lastSeen
+                                ? `Last seen ${formatDistanceToNow(
+                                    new Date(otherParticipant.lastSeen),
+                                    { addSuffix: true },
+                                  )}`
+                                : "Seen"
                               : "Delivered"}
                           </span>
                         )}
