@@ -234,6 +234,9 @@ export default function ChatPage() {
         userId: string;
         isTyping: boolean;
       };
+
+      if (userId === session?.user.id) return;
+
       setTypingUsers((prev) => {
         const next = new Set(prev);
         if (isTyping) next.add(userId);
