@@ -38,7 +38,7 @@ export default async function RootLayout({
             <div className="flex h-screen justify-center">
               <div className="flex w-full max-w-7xl">
                 <Sidebar />
-                <main className="flex-1 border-r border-white/20 pb-16 md:pb-0">
+                <main className="flex-1 pb-16 md:border-r md:border-white/20 md:pb-0">
                   {children}
                 </main>
               </div>

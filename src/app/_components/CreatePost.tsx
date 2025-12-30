@@ -31,7 +31,7 @@ export function CreatePost({
   return (
     <form onSubmit={handleSubmit} className="border-b border-white/20 p-4">
       <textarea
-        className="w-full resize-none bg-transparent text-xl outline-none"
+        className="w-full resize-none bg-transparent text-lg outline-none md:text-xl"
         placeholder={placeholder}
         rows={3}
         value={content}

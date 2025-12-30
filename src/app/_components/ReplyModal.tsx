@@ -33,7 +33,7 @@ export function ReplyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl border border-white/20 bg-black p-4">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/20 bg-black p-4">
         <div className="mb-4 flex justify-between">
           <h2 className="text-xl font-bold">Reply</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">

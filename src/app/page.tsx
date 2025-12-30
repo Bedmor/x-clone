@@ -13,8 +13,9 @@ export default async function Home() {
   return (
     <HydrateClient>
       <div className="flex flex-col">
-        <div className="sticky top-0 z-10 border-b border-white/20 bg-black/50 p-4 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/20 bg-black/50 p-4 backdrop-blur">
           <h1 className="text-xl font-bold">Home</h1>
+          <div className="font-bold md:hidden">X Clone</div>
         </div>
         {session && <CreatePost />}
         <Suspense fallback={<PostSkeletonList />}>

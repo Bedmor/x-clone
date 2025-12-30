@@ -48,12 +48,6 @@ export async function BottomNav() {
           >
             <Settings className="h-6 w-6" />
           </Link>
-          <Link
-            href="/api/auth/signout"
-            className="flex flex-col items-center justify-center rounded-full p-2 text-red-500 hover:bg-white/10"
-          >
-            <LogOut className="h-6 w-6" />
-          </Link>
         </>
       )}
       {!session && (

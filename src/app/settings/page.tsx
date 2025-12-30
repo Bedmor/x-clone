@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { LogOut } from "lucide-react";
 
 export default function SettingsPage() {
   const [username, setUsername] = useState("");
@@ -77,6 +79,17 @@ export default function SettingsPage() {
               {updatePassword.isPending ? "Updating..." : "Update Password"}
             </button>
           </div>
+        </div>
+
+        <div className="space-y-4 border-t border-white/20 pt-4">
+          <h2 className="text-xl font-bold text-red-500">Danger Zone</h2>
+          <Link
+            href="/api/auth/signout"
+            className="flex w-full items-center justify-center gap-2 rounded bg-red-500 px-4 py-2 font-bold text-white hover:bg-red-600"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Sign Out</span>
+          </Link>
         </div>
       </div>
     </div>

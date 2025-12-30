@@ -7,7 +7,13 @@ import { useSession } from "next-auth/react";
 import Ably from "ably";
 import { UserAvatar } from "../_components/UserAvatar";
 import { formatDistanceToNow } from "date-fns";
-import { Send, MailPlus, Image as ImageIcon, Loader2 } from "lucide-react";
+import {
+  Send,
+  MailPlus,
+  Image as ImageIcon,
+  Loader2,
+  ArrowLeft,
+} from "lucide-react";
 import { NewChatModal } from "./NewChatModal";
 import { upload } from "@vercel/blob/client";
 import Image from "next/image";
@@ -184,9 +190,31 @@ export default function ChatPage() {
           const firstPage = newPages[0];
 
           if (firstPage) {
+            let newMessages = [...firstPage.messages];
+
+            // Check if we have an optimistic message to replace
+            if (typedMessage.senderId === session.user.id) {
+              // Find the oldest optimistic message
+              let foundIndex = -1;
+              for (let i = newMessages.length - 1; i >= 0; i--) {
+                if (newMessages[i].id.startsWith("optimistic-")) {
+                  foundIndex = i;
+                  break;
+                }
+              }
+
+              if (foundIndex !== -1) {
+                newMessages[foundIndex] = typedMessage;
+              } else {
+                newMessages = [typedMessage, ...newMessages];
+              }
+            } else {
+              newMessages = [typedMessage, ...newMessages];
+            }
+
             newPages[0] = {
               ...firstPage,
-              messages: [typedMessage, ...firstPage.messages],
+              messages: newMessages,
             };
           }
 
@@ -271,6 +299,67 @@ export default function ChatPage() {
       });
     }
 
+    // Optimistic Update
+    const tempId = `optimistic-${Date.now()}`;
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      content,
+      attachmentUrl: null,
+      conversationId: selectedConversationId,
+      senderId: session.user.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      sender: {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+        emailVerified: null,
+        headerImage: null,
+        bio: null,
+        location: null,
+        website: null,
+        username: null,
+        password: null,
+        lastSeen: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any, // Cast to satisfy type
+    };
+
+    utils.chat.getMessages.setInfiniteData(
+      { conversationId: selectedConversationId, limit: 20 },
+      (oldData) => {
+        if (!oldData) {
+          return {
+            pages: [
+              {
+                messages: [optimisticMessage],
+                nextCursor: undefined,
+              },
+            ],
+            pageParams: [],
+          };
+        }
+
+        const newPages = [...oldData.pages];
+        const firstPage = newPages[0];
+
+        if (firstPage) {
+          newPages[0] = {
+            ...firstPage,
+            messages: [optimisticMessage, ...firstPage.messages],
+          };
+        }
+
+        return {
+          ...oldData,
+          pages: newPages,
+        };
+      },
+    );
+    scrollToBottom();
+
     try {
       await sendMessageMutation.mutateAsync({
         conversationId: selectedConversationId,
@@ -314,9 +403,13 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden border-t border-white/20">
+    <div className="flex h-full w-full overflow-hidden border-t border-white/20">
       {/* Conversations List */}
-      <div className="w-1/3 border-r border-white/20 bg-black">
+      <div
+        className={`w-full border-r border-white/20 bg-black md:w-1/3 ${
+          selectedConversationId ? "hidden md:block" : "block"
+        }`}
+      >
         <div className="flex items-center justify-between border-b border-white/20 p-4">
           <h2 className="text-xl font-bold">Messages</h2>
           <button
@@ -396,12 +489,22 @@ export default function ChatPage() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex w-2/3 flex-col bg-black">
+      <div
+        className={`flex w-full flex-col bg-black md:w-2/3 ${
+          selectedConversationId ? "block" : "hidden md:flex"
+        }`}
+      >
         {selectedConversationId ? (
           <>
             {/* Chat Header */}
             <div className="border-b border-white/20 p-4">
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSelectedConversationId(null)}
+                  className="mr-2 md:hidden"
+                >
+                  <ArrowLeft />
+                </button>
                 {(() => {
                   const conversation = conversations?.find(
                     (c) => c.id === selectedConversationId,
