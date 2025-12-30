@@ -193,11 +193,11 @@ export default function ChatPage() {
             let newMessages = [...firstPage.messages];
 
             // Check if we have an optimistic message to replace
-            if (typedMessage.senderId === session.user.id) {
+            if (typedMessage.senderId === session?.user.id) {
               // Find the oldest optimistic message
               let foundIndex = -1;
               for (let i = newMessages.length - 1; i >= 0; i--) {
-                if (newMessages[i].id.startsWith("optimistic-")) {
+                if (newMessages[i]?.id.startsWith("optimistic-")) {
                   foundIndex = i;
                   break;
                 }
@@ -246,7 +246,14 @@ export default function ChatPage() {
       channel.unsubscribe();
       setTypingUsers(new Set());
     };
-  }, [ablyClient, selectedConversationId, utils, refetchConversations]);
+  }, [
+    ablyClient,
+    selectedConversationId,
+    utils,
+    refetchConversations,
+    markConversationAsRead,
+    session?.user.id,
+  ]);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -301,30 +308,33 @@ export default function ChatPage() {
 
     // Optimistic Update
     const tempId = `optimistic-${Date.now()}`;
+
+    // Build a properly typed sender object from the session values,
+    // coercing/guarding fields so we don't assign `any` into a typed object.
+    const optimisticSender: ChatMessage["sender"] = {
+      id: String(session.user.id),
+      name: typeof session.user.name === "string" ? session.user.name : null,
+      email: typeof session.user.email === "string" ? session.user.email : null,
+      image: typeof session.user.image === "string" ? session.user.image : null,
+      emailVerified: null,
+      headerImage: null,
+      bio: null,
+      location: null,
+      website: null,
+      username: null,
+      password: null,
+      lastSeen: new Date(),
+      pinnedPostId: null,
+    } as unknown as ChatMessage["sender"];
+
     const optimisticMessage: ChatMessage = {
       id: tempId,
       content,
       attachmentUrl: null,
       conversationId: selectedConversationId,
-      senderId: session.user.id,
+      senderId: String(session.user.id),
       createdAt: new Date(),
-      updatedAt: new Date(),
-      sender: {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        image: session.user.image,
-        emailVerified: null,
-        headerImage: null,
-        bio: null,
-        location: null,
-        website: null,
-        username: null,
-        password: null,
-        lastSeen: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any, // Cast to satisfy type
+      sender: optimisticSender,
     };
 
     utils.chat.getMessages.setInfiniteData(
