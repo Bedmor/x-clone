@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Prisma } from "../../../../generated/prisma";
 
 import {
   createTRPCRouter,
@@ -136,7 +137,7 @@ export const postRouter = createTRPCRouter({
         );
       }
 
-      let whereClause: any = {
+      const whereClause: Prisma.PostWhereInput = {
         parentId: null,
         createdById: { notIn: blockedUserIds },
       };
