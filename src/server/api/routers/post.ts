@@ -113,47 +113,95 @@ export const postRouter = createTRPCRouter({
     });
   }),
 
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    const posts = await ctx.db.post.findMany({
-      orderBy: { createdAt: "desc" },
-      where: { parentId: null },
-      include: {
-        createdBy: true,
-        likes: {
-          where: { userId: ctx.session?.user?.id ?? "" },
-        },
-        reposts: {
-          where: { createdById: ctx.session?.user?.id ?? "" },
-        },
-        pinnedBy: {
-          where: { id: ctx.session?.user?.id ?? "" },
-          select: { id: true },
-        },
-        repostOf: {
-          include: {
-            createdBy: true,
-            likes: {
-              where: { userId: ctx.session?.user?.id ?? "" },
-            },
-            reposts: {
-              where: { createdById: ctx.session?.user?.id ?? "" },
-            },
-            pinnedBy: {
-              where: { id: ctx.session?.user?.id ?? "" },
-              select: { id: true },
-            },
-            _count: {
-              select: { likes: true, replies: true, reposts: true },
+  getAll: publicProcedure
+    .input(
+      z.object({
+        tab: z.enum(["for-you", "following"]).optional().default("for-you"),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const tab = input?.tab ?? "for-you";
+      const userId = ctx.session?.user?.id;
+
+      // Get blocked users to filter them out
+      let blockedUserIds: string[] = [];
+      if (userId) {
+        const blocks = await ctx.db.block.findMany({
+          where: {
+            OR: [{ blockerId: userId }, { blockedId: userId }],
+          },
+        });
+        blockedUserIds = blocks.map((b) =>
+          b.blockerId === userId ? b.blockedId : b.blockerId,
+        );
+      }
+
+      let whereClause: any = {
+        parentId: null,
+        createdById: { notIn: blockedUserIds },
+      };
+
+      if (tab === "following" && userId) {
+        const following = await ctx.db.follow.findMany({
+          where: { followerId: userId },
+          select: { followingId: true },
+        });
+        const followingIds = following.map((f) => f.followingId);
+        whereClause.createdById = { in: followingIds, notIn: blockedUserIds };
+      } else if (tab === "for-you") {
+        // For You: Last 4 days
+        const fourDaysAgo = new Date();
+        fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+        whereClause.createdAt = { gte: fourDaysAgo };
+      }
+
+      const posts = await ctx.db.post.findMany({
+        take: 50,
+        orderBy: { createdAt: "desc" },
+        where: whereClause,
+        include: {
+          createdBy: true,
+          likes: {
+            where: { userId: userId ?? "" },
+          },
+          reposts: {
+            where: { createdById: userId ?? "" },
+          },
+          pinnedBy: {
+            where: { id: userId ?? "" },
+            select: { id: true },
+          },
+          repostOf: {
+            include: {
+              createdBy: true,
+              likes: {
+                where: { userId: userId ?? "" },
+              },
+              reposts: {
+                where: { createdById: userId ?? "" },
+              },
+              pinnedBy: {
+                where: { id: userId ?? "" },
+                select: { id: true },
+              },
+              _count: {
+                select: { likes: true, replies: true, reposts: true },
+              },
             },
           },
+          _count: {
+            select: { likes: true, replies: true, reposts: true },
+          },
         },
-        _count: {
-          select: { likes: true, replies: true, reposts: true },
-        },
-      },
-    });
+      });
 
-    return posts.map((post) => ({
+      // Randomize for "For You" tab
+      let finalPosts = posts;
+      if (tab === "for-you") {
+        finalPosts = posts.sort(() => Math.random() - 0.5);
+      }
+
+      return finalPosts.map((post) => ({
       ...post,
       isLiked: post.likes.length > 0,
       isReposted: post.reposts.length > 0,

@@ -39,6 +39,9 @@ model Post {
   notifications Notification[]
 
   @@index([createdById])
+  @@index([createdAt])
+  @@index([parentId])
+  @@index([repostOfId])
 }
 
 model Like {
@@ -61,6 +64,17 @@ model Follow {
   @@id([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+model Block {
+  blockerId String
+  blockedId String
+  blocker   User   @relation("UserBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User   @relation("UserBlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
 }
 
 // Necessary for Next auth
@@ -114,12 +128,18 @@ model User {
   followedBy Follow[] @relation("UserFollowedBy")
   following  Follow[] @relation("UserFollows")
 
+  blocking  Block[] @relation("UserBlocks")
+  blockedBy Block[] @relation("UserBlockedBy")
+
   notifications          Notification[] @relation("UserNotifications")
   triggeredNotifications Notification[] @relation("NotificationActor")
 
   // Chat relations
   messages      Message[]
   conversations ConversationParticipant[]
+
+  @@index([username])
+  @@index([email])
 }
 
 model Notification {

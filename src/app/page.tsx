@@ -8,7 +8,7 @@ import { PostSkeletonList } from "./_components/PostSkeleton";
 export default async function Home() {
   const session = await auth();
 
-  void api.post.getAll.prefetch();
+  void api.post.getAll.prefetch({ tab: "for-you" });
 
   return (
     <HydrateClient>

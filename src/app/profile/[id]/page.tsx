@@ -8,6 +8,7 @@ import { ProfileFeed } from "./ProfileFeed";
 import { EditProfileButton } from "./EditProfileButton";
 import { ProfileStats } from "./ProfileStats";
 import { MessageButton } from "./MessageButton";
+import { BlockButton } from "./BlockButton";
 
 export default async function ProfilePage({
   params,
@@ -55,6 +56,10 @@ export default async function ProfilePage({
               session && (
                 <div className="flex gap-2">
                   <MessageButton userId={user.id} />
+                  <BlockButton
+                    userId={user.id}
+                    initialIsBlocked={user.isBlocked}
+                  />
                   <FollowButton
                     userId={user.id}
                     initialIsFollowing={user.isFollowing}
@@ -85,7 +90,15 @@ export default async function ProfilePage({
             followersCount={user._count.followedBy}
           />
         </div>
-        <ProfileFeed userId={user.id} pinnedPost={user.pinnedPost} />
+        {user.isBlocked || user.hasBlocked ? (
+          <div className="p-8 text-center text-gray-500">
+            {user.isBlocked
+              ? "Bu kullanıcıyı engellediniz."
+              : "Bu kullanıcı sizi engelledi."}
+          </div>
+        ) : (
+          <ProfileFeed userId={user.id} pinnedPost={user.pinnedPost} />
+        )}
       </div>
     </HydrateClient>
   );

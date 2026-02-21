@@ -20,6 +20,12 @@ export const userRouter = createTRPCRouter({
           followedBy: {
             where: { followerId: ctx.session?.user?.id ?? "" },
           },
+          blockedBy: {
+            where: { blockerId: ctx.session?.user?.id ?? "" },
+          },
+          blocking: {
+            where: { blockedId: ctx.session?.user?.id ?? "" },
+          },
           pinnedPost: {
             include: {
               createdBy: true,
@@ -63,6 +69,12 @@ export const userRouter = createTRPCRouter({
           },
           followedBy: {
             where: { followerId: ctx.session?.user?.id ?? "" },
+          },
+          blockedBy: {
+            where: { blockerId: ctx.session?.user?.id ?? "" },
+          },
+          blocking: {
+            where: { blockedId: ctx.session?.user?.id ?? "" },
           },
           pinnedPost: {
             include: {
@@ -121,6 +133,8 @@ export const userRouter = createTRPCRouter({
       return {
         ...user,
         isFollowing: user.followedBy.length > 0,
+        isBlocked: user.blockedBy.length > 0,
+        hasBlocked: user.blocking.length > 0,
         pinnedPost,
       };
     }),
@@ -204,6 +218,7 @@ export const userRouter = createTRPCRouter({
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
       const posts = await ctx.db.post.findMany({
+        take: 50,
         where: { createdById: input.userId, parentId: null },
         orderBy: { createdAt: "desc" },
         include: {
@@ -256,6 +271,7 @@ export const userRouter = createTRPCRouter({
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
       const posts = await ctx.db.post.findMany({
+        take: 50,
         where: { createdById: input.userId, parentId: { not: null } },
         orderBy: { createdAt: "desc" },
         include: {
@@ -308,6 +324,7 @@ export const userRouter = createTRPCRouter({
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
       const likes = await ctx.db.like.findMany({
+        take: 50,
         where: { userId: input.userId },
         orderBy: { post: { createdAt: "desc" } },
         include: {
@@ -490,6 +507,44 @@ export const userRouter = createTRPCRouter({
       return ctx.db.user.update({
         where: { id: ctx.session.user.id },
         data: { password: hashedPassword },
+      });
+    }),
+
+  blockUser: protectedProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id === input.userId) {
+        throw new Error("You cannot block yourself");
+      }
+
+      // Remove follow relationship if exists
+      await ctx.db.follow.deleteMany({
+        where: {
+          OR: [
+            { followerId: ctx.session.user.id, followingId: input.userId },
+            { followerId: input.userId, followingId: ctx.session.user.id },
+          ],
+        },
+      });
+
+      return ctx.db.block.create({
+        data: {
+          blockerId: ctx.session.user.id,
+          blockedId: input.userId,
+        },
+      });
+    }),
+
+  unblockUser: protectedProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.block.delete({
+        where: {
+          blockerId_blockedId: {
+            blockerId: ctx.session.user.id,
+            blockedId: input.userId,
+          },
+        },
       });
     }),
 });

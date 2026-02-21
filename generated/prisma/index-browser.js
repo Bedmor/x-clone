@@ -141,6 +141,11 @@ exports.Prisma.FollowScalarFieldEnum = {
   followingId: 'followingId'
 };
 
+exports.Prisma.BlockScalarFieldEnum = {
+  blockerId: 'blockerId',
+  blockedId: 'blockedId'
+};
+
 exports.Prisma.AccountScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -238,6 +243,7 @@ exports.Prisma.ModelName = {
   Post: 'Post',
   Like: 'Like',
   Follow: 'Follow',
+  Block: 'Block',
   Account: 'Account',
   Session: 'Session',
   User: 'User',

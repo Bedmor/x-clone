@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 import Link from "next/link";
@@ -20,7 +20,11 @@ import { useSession } from "next-auth/react";
 
 type PostWithUser = RouterOutputs["post"]["getAll"][number];
 
-export function PostItem({ post }: { post: PostWithUser }) {
+export const PostItem = React.memo(function PostItem({
+  post,
+}: {
+  post: PostWithUser;
+}) {
   const { data: session } = useSession();
   const isSimpleRepost = !!post.repostOf && !post.content;
   const displayPost: PostWithUser = isSimpleRepost
@@ -319,4 +323,4 @@ export function PostItem({ post }: { post: PostWithUser }) {
       />
     </>
   );
-}
+});
