@@ -108,7 +108,7 @@ export const postRouter = createTRPCRouter({
       where: { createdById: ctx.session.user.id },
       orderBy: { createdAt: "desc" },
       include: {
-        createdBy: true,
+        createdBy: { select: { id: true, name: true, username: true, image: true } },
         _count: { select: { likes: true, replies: true, reposts: true } },
       },
     });
@@ -161,7 +161,9 @@ export const postRouter = createTRPCRouter({
         orderBy: { createdAt: "desc" },
         where: whereClause,
         include: {
-          createdBy: true,
+          createdBy: {
+            select: { id: true, name: true, username: true, image: true },
+          },
           likes: {
             where: { userId: userId ?? "" },
           },
@@ -174,7 +176,9 @@ export const postRouter = createTRPCRouter({
           },
           repostOf: {
             include: {
-              createdBy: true,
+              createdBy: {
+                select: { id: true, name: true, username: true, image: true },
+              },
               likes: {
                 where: { userId: userId ?? "" },
               },
@@ -224,7 +228,7 @@ export const postRouter = createTRPCRouter({
       const post = await ctx.db.post.findUnique({
         where: { id: input.id },
         include: {
-          createdBy: true,
+          createdBy: { select: { id: true, name: true, username: true, image: true } },
           likes: {
             where: { userId: ctx.session?.user?.id ?? "" },
           },
@@ -237,7 +241,7 @@ export const postRouter = createTRPCRouter({
           },
           repostOf: {
             include: {
-              createdBy: true,
+              createdBy: { select: { id: true, name: true, username: true, image: true } },
             },
           },
           _count: {
@@ -245,7 +249,7 @@ export const postRouter = createTRPCRouter({
           },
           replies: {
             include: {
-              createdBy: true,
+              createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: {
                 where: { userId: ctx.session?.user?.id ?? "" },
               },

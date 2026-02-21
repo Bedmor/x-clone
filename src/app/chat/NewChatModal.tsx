@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { UserAvatar } from "../_components/UserAvatar";
 import { Search } from "lucide-react";
+import { Logo } from "../_components/Logo";
 
 export function NewChatModal({
   onClose,
@@ -42,7 +43,9 @@ export function NewChatModal({
 
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 text-center">Loading...</div>
+            <div className="flex justify-center p-4">
+              <Logo className="h-6 w-6 animate-spin text-white" />
+            </div>
           ) : users?.length === 0 && query ? (
             <div className="p-4 text-center text-gray-500">No users found</div>
           ) : (

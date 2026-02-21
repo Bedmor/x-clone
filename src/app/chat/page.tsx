@@ -23,6 +23,8 @@ import { type AppRouter } from "~/server/api/root";
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
 
+import { Logo } from "../_components/Logo";
+
 export default function ChatPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -580,13 +582,19 @@ export default function ChatPage() {
                     disabled={isFetchingNextPage}
                     className="text-xs text-blue-500 hover:underline"
                   >
-                    {isFetchingNextPage ? "Loading..." : "Load older messages"}
+                    {isFetchingNextPage ? (
+                      <Logo className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Load older messages"
+                    )}
                   </button>
                 </div>
               )}
 
               {isLoadingMessages ? (
-                <div className="text-center">Loading messages...</div>
+                <div className="flex justify-center py-4">
+                  <Logo className="h-6 w-6 animate-spin text-white" />
+                </div>
               ) : (
                 <div className="flex flex-col gap-4">
                   {messages.map((message) => {

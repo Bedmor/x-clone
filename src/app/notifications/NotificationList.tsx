@@ -9,13 +9,9 @@ import { Heart, MessageCircle, UserPlus, AtSign } from "lucide-react";
 type NotificationType = RouterOutputs["notification"]["getAll"][number];
 
 export function NotificationList() {
-  const result = api.notification.getAll.useSuspenseQuery() as unknown as [
-    NotificationType[],
-    unknown,
-  ];
-  const notifications = result[0] ?? [];
+  const [notifications] = api.notification.getAll.useSuspenseQuery();
 
-  if (notifications.length === 0) {
+  if (!notifications || notifications.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">No notifications yet</div>
     );

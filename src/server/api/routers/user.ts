@@ -28,7 +28,7 @@ export const userRouter = createTRPCRouter({
           },
           pinnedPost: {
             include: {
-              createdBy: true,
+              createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: {
                 where: { userId: ctx.session?.user?.id ?? "" },
               },
@@ -42,7 +42,7 @@ export const userRouter = createTRPCRouter({
               _count: { select: { likes: true, replies: true, reposts: true } },
               repostOf: {
                 include: {
-                  createdBy: true,
+                  createdBy: { select: { id: true, name: true, username: true, image: true } },
                   likes: { where: { userId: ctx.session?.user?.id ?? "" } },
                   reposts: {
                     where: { createdById: ctx.session?.user?.id ?? "" },
@@ -78,7 +78,7 @@ export const userRouter = createTRPCRouter({
           },
           pinnedPost: {
             include: {
-              createdBy: true,
+              createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: {
                 where: { userId: ctx.session?.user?.id ?? "" },
               },
@@ -92,7 +92,7 @@ export const userRouter = createTRPCRouter({
               _count: { select: { likes: true, replies: true, reposts: true } },
               repostOf: {
                 include: {
-                  createdBy: true,
+                  createdBy: { select: { id: true, name: true, username: true, image: true } },
                   likes: { where: { userId: ctx.session?.user?.id ?? "" } },
                   reposts: {
                     where: { createdById: ctx.session?.user?.id ?? "" },
@@ -222,7 +222,7 @@ export const userRouter = createTRPCRouter({
         where: { createdById: input.userId, parentId: null },
         orderBy: { createdAt: "desc" },
         include: {
-          createdBy: true,
+          createdBy: { select: { id: true, name: true, username: true, image: true } },
           likes: {
             where: { userId: ctx.session?.user?.id ?? "" },
           },
@@ -235,7 +235,7 @@ export const userRouter = createTRPCRouter({
           },
           repostOf: {
             include: {
-              createdBy: true,
+              createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: { where: { userId: ctx.session?.user?.id ?? "" } },
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
               pinnedBy: {
@@ -275,7 +275,7 @@ export const userRouter = createTRPCRouter({
         where: { createdById: input.userId, parentId: { not: null } },
         orderBy: { createdAt: "desc" },
         include: {
-          createdBy: true,
+          createdBy: { select: { id: true, name: true, username: true, image: true } },
           likes: {
             where: { userId: ctx.session?.user?.id ?? "" },
           },
@@ -288,7 +288,7 @@ export const userRouter = createTRPCRouter({
           },
           repostOf: {
             include: {
-              createdBy: true,
+              createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: { where: { userId: ctx.session?.user?.id ?? "" } },
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
               pinnedBy: {
@@ -330,7 +330,7 @@ export const userRouter = createTRPCRouter({
         include: {
           post: {
             include: {
-              createdBy: true,
+              createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: {
                 where: { userId: ctx.session?.user?.id ?? "" },
               },
@@ -341,7 +341,7 @@ export const userRouter = createTRPCRouter({
               },
               repostOf: {
                 include: {
-                  createdBy: true,
+                  createdBy: { select: { id: true, name: true, username: true, image: true } },
                   likes: { where: { userId: ctx.session?.user?.id ?? "" } },
                   reposts: {
                     where: { createdById: ctx.session?.user?.id ?? "" },
@@ -468,6 +468,15 @@ export const userRouter = createTRPCRouter({
             followingId: input.userId,
           },
         });
+
+        await ctx.db.notification.create({
+          data: {
+            type: "FOLLOW",
+            userId: input.userId,
+            actorId: currentUserId,
+          },
+        });
+
         return { addedFollow: true };
       } else {
         await ctx.db.follow.delete({

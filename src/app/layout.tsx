@@ -10,13 +10,13 @@ import { Sidebar } from "./_components/Sidebar";
 import { BottomNav } from "./_components/BottomNav";
 
 export const metadata: Metadata = {
-  title: "X Clone",
+  title: "BetterTwitter",
   description: "A social media clone",
   icons: [{ rel: "icon", url: "/favicon.png" }],
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "X Clone",
+    title: "BetterTwitter",
   },
 };
 
@@ -38,7 +38,7 @@ export default async function RootLayout({
             <div className="flex h-screen justify-center">
               <div className="flex w-full max-w-7xl">
                 <Sidebar />
-                <main className="flex-1 overflow-y-auto pb-16 md:border-r md:border-white/20 md:pb-0">
+                <main className="flex-1 pb-16 md:border-r md:border-white/20 md:pb-0">
                   {children}
                 </main>
               </div>

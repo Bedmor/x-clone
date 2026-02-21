@@ -4,6 +4,7 @@ import { api } from "~/trpc/react";
 import { UserAvatar } from "./UserAvatar";
 import Link from "next/link";
 import { FollowButton } from "./FollowButton";
+import { Logo } from "./Logo";
 
 export function UserListModal({
   userId,
@@ -30,7 +31,9 @@ export function UserListModal({
         </div>
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 text-center">Loading...</div>
+            <div className="flex justify-center p-4">
+              <Logo className="h-6 w-6 animate-spin text-white" />
+            </div>
           ) : users?.length === 0 ? (
             <div className="p-4 text-center text-gray-500">No users found</div>
           ) : (

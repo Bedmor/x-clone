@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { auth } from "~/server/auth";
 import { Home, User, Settings, LogOut, Bell, Mail } from "lucide-react";
+import { Logo } from "./Logo";
 
 export async function Sidebar() {
   const session = await auth();
 
   return (
     <div className="hidden h-full w-64 flex-col border-r border-white/20 p-4 md:flex">
-      <div className="mb-8 text-2xl font-bold">X Clone</div>
+      <div className="mb-8 flex items-center gap-2 text-2xl font-bold">
+        <Logo className="h-8 w-8 text-white" />
+        <span>BetterTwitter</span>
+      </div>
       <nav className="flex flex-col gap-4">
         <Link
           href="/"

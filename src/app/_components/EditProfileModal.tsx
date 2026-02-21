@@ -5,6 +5,8 @@ import { api } from "~/trpc/react";
 import { upload } from "@vercel/blob/client";
 import { Camera } from "lucide-react";
 import Image from "next/image";
+import { ImageCropperModal } from "./ImageCropperModal";
+
 export function EditProfileModal({
   user,
   isOpen,
@@ -30,6 +32,11 @@ export function EditProfileModal({
   const [headerImage, setHeaderImage] = useState(user.headerImage ?? "");
   const [isUploading, setIsUploading] = useState(false);
 
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropType, setCropType] = useState<"avatar" | "header" | null>(null);
+  const [croppedAvatarFile, setCroppedAvatarFile] = useState<File | null>(null);
+  const [croppedHeaderFile, setCroppedHeaderFile] = useState<File | null>(null);
+
   const headerInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,18 +56,16 @@ export function EditProfileModal({
       let newImageUrl = image;
       let newHeaderImageUrl = headerImage;
 
-      if (avatarInputRef.current?.files?.[0]) {
-        const file = avatarInputRef.current.files[0];
-        const blob = await upload(file.name, file, {
+      if (croppedAvatarFile) {
+        const blob = await upload(croppedAvatarFile.name, croppedAvatarFile, {
           access: "public",
           handleUploadUrl: "/api/upload",
         });
         newImageUrl = blob.url;
       }
 
-      if (headerInputRef.current?.files?.[0]) {
-        const file = headerInputRef.current.files[0];
-        const blob = await upload(file.name, file, {
+      if (croppedHeaderFile) {
+        const blob = await upload(croppedHeaderFile.name, croppedHeaderFile, {
           access: "public",
           handleUploadUrl: "/api/upload",
         });
@@ -121,7 +126,8 @@ export function EditProfileModal({
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files?.[0]) {
-                    setHeaderImage(URL.createObjectURL(e.target.files[0]));
+                    setCropImageSrc(URL.createObjectURL(e.target.files[0]));
+                    setCropType("header");
                   }
                 }}
               />
@@ -155,7 +161,8 @@ export function EditProfileModal({
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files?.[0]) {
-                      setImage(URL.createObjectURL(e.target.files[0]));
+                      setCropImageSrc(URL.createObjectURL(e.target.files[0]));
+                      setCropType("avatar");
                     }
                   }}
                 />
@@ -216,6 +223,30 @@ export function EditProfileModal({
           </div>
         </form>
       </div>
+
+      {cropImageSrc && cropType && (
+        <ImageCropperModal
+          imageUrl={cropImageSrc}
+          aspect={cropType === "avatar" ? 1 : 3}
+          onCancel={() => {
+            setCropImageSrc(null);
+            setCropType(null);
+            if (avatarInputRef.current) avatarInputRef.current.value = "";
+            if (headerInputRef.current) headerInputRef.current.value = "";
+          }}
+          onCropComplete={(file) => {
+            if (cropType === "avatar") {
+              setCroppedAvatarFile(file);
+              setImage(URL.createObjectURL(file));
+            } else {
+              setCroppedHeaderFile(file);
+              setHeaderImage(URL.createObjectURL(file));
+            }
+            setCropImageSrc(null);
+            setCropType(null);
+          }}
+        />
+      )}
     </div>
   );
 }
