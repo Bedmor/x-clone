@@ -30,7 +30,8 @@ export function PrivacySettings() {
       <div>
         <h2 className="text-xl font-bold">Gizlilik</h2>
         <p className="text-sm text-gray-400">
-          Paylaşımlarınızı kimlerin görebileceğini ve kimlerin yeni konuşmalar başlatabileceğini kontrol edin.
+          Paylaşımlarınızı kimlerin görebileceğini ve kimlerin yeni konuşmalar
+          başlatabileceğini kontrol edin.
         </p>
       </div>
 
@@ -52,7 +53,9 @@ export function PrivacySettings() {
       </label>
 
       <div className="space-y-2">
-        <label className="text-sm text-gray-400">Kimler size mesaj atabilir</label>
+        <label className="text-sm text-gray-400">
+          Kimler size mesaj atabilir
+        </label>
         <select
           value={data.messagePermission}
           onChange={(e) =>

@@ -224,9 +224,7 @@ export const PostItem = React.memo(function PostItem({
 
       alert("Teşekkürler, raporunuz gönderildi.");
     } catch (error) {
-      alert(
-        error instanceof Error ? error.message : "Rapor gönderilemedi.",
-      );
+      alert(error instanceof Error ? error.message : "Rapor gönderilemedi.");
     } finally {
       setIsReporting(false);
     }

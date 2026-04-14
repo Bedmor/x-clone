@@ -109,7 +109,9 @@ export function MutedKeywordsSettings() {
         >
           Temizle
         </button>
-        {saved && <span className="text-sm text-gray-400">Yerel olarak kaydedildi</span>}
+        {saved && (
+          <span className="text-sm text-gray-400">Yerel olarak kaydedildi</span>
+        )}
       </div>
       <div className="text-sm text-gray-400">
         {preview.length > 0

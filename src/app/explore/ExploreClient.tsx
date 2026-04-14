@@ -191,7 +191,8 @@ export function ExploreClient() {
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-gray-400">
-                Henüz etiket yok. #launch veya #design gibi bir etiketle paylaşım yaparak başla.
+                Henüz etiket yok. #launch veya #design gibi bir etiketle
+                paylaşım yaparak başla.
               </div>
             )}
           </div>
@@ -255,7 +256,9 @@ export function ExploreClient() {
               <div className="mb-3 text-lg font-bold">Etiketler</div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {tagsLoading ? (
-                  <div className="text-sm text-gray-400">Etiketler aranıyor...</div>
+                  <div className="text-sm text-gray-400">
+                    Etiketler aranıyor...
+                  </div>
                 ) : tags.length > 0 ? (
                   tags.map((tag) => (
                     <Link

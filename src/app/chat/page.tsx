@@ -547,7 +547,9 @@ export default function ChatPage() {
                           {otherParticipant?.name ?? "Bilinmeyen Kullanıcı"}
                         </span>
                         {isOnline ? (
-                          <span className="text-xs text-green-500">Çevrimiçi</span>
+                          <span className="text-xs text-green-500">
+                            Çevrimiçi
+                          </span>
                         ) : (
                           <span className="text-xs text-gray-500">
                             {otherParticipantData?.hasSeenLatest

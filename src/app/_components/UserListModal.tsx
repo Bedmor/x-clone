@@ -37,7 +37,9 @@ export function UserListModal({
               <Logo className="h-6 w-6 animate-spin text-white" />
             </div>
           ) : users?.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">Kullanıcı bulunamadı</div>
+            <div className="p-4 text-center text-gray-500">
+              Kullanıcı bulunamadı
+            </div>
           ) : (
             <div className="flex flex-col gap-4">
               {users?.map((user) => (

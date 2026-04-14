@@ -175,7 +175,9 @@ export function EditProfileModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-500">Biyografi</label>
+            <label className="block text-sm font-bold text-gray-500">
+              Biyografi
+            </label>
             <textarea
               className="w-full resize-none rounded border border-white/20 bg-transparent p-2 text-white outline-none focus:border-blue-500"
               rows={3}
@@ -211,7 +213,9 @@ export function EditProfileModal({
               disabled={updateProfile.isPending || isUploading}
               className="rounded-full bg-white px-4 py-2 font-bold text-black hover:bg-white/90 disabled:opacity-50"
             >
-              {updateProfile.isPending || isUploading ? "Kaydediliyor..." : "Kaydet"}
+              {updateProfile.isPending || isUploading
+                ? "Kaydediliyor..."
+                : "Kaydet"}
             </button>
           </div>
         </form>
