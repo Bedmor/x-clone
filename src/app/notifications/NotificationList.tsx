@@ -30,7 +30,7 @@ export function NotificationList() {
 
   if (!visibleNotifications || visibleNotifications.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500">No notifications yet</div>
+      <div className="p-4 text-center text-gray-500">Henüz bildirim yok</div>
     );
   }
 
@@ -46,7 +46,7 @@ export function NotificationList() {
             icon = (
               <Heart className="h-6 w-6 text-pink-500" fill="currentColor" />
             );
-            text = "liked your post";
+            text = "gönderinizi beğendi";
             href = `/post/${notification.postId}`;
             break;
           case "REPLY":
@@ -56,19 +56,19 @@ export function NotificationList() {
                 fill="currentColor"
               />
             );
-            text = "replied to your post";
+            text = "gönderinize yanıt verdi";
             href = `/post/${notification.postId}`;
             break;
           case "FOLLOW":
             icon = (
               <UserPlus className="h-6 w-6 text-blue-400" fill="currentColor" />
             );
-            text = "followed you";
+            text = "seni takip etti";
             href = `/profile/${notification.actorId}`;
             break;
           case "MENTION":
             icon = <AtSign className="h-6 w-6 text-blue-400" />;
-            text = "mentioned you in a post";
+            text = "seni bir gönderide etiketledi";
             href = `/post/${notification.postId}`;
             break;
         }

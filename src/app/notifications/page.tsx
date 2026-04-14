@@ -13,7 +13,7 @@ export default async function NotificationsPage() {
     <HydrateClient>
       <div className="flex flex-col">
         <div className="sticky top-0 z-10 border-b border-white/20 bg-black/50 p-4 backdrop-blur">
-          <h1 className="text-xl font-bold">Notifications</h1>
+          <h1 className="text-xl font-bold">Bildirimler</h1>
         </div>
         <NotificationList />
       </div>

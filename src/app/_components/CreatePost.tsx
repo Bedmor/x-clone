@@ -28,7 +28,7 @@ export function CreatePost({
   const cropObjectUrlRef = useRef<string | null>(null);
   const utils = api.useUtils();
   const draftKey = useMemo(
-    () => `bettertwitter.draft.${pathname}.${parentId ?? "root"}`,
+    () => `flowzest.draft.${pathname}.${parentId ?? "root"}`,
     [parentId, pathname],
   );
 

@@ -4,8 +4,7 @@ import { Flag } from "lucide-react";
 import { api } from "~/trpc/react";
 
 const reasonPrompt =
-  "Report reason (SPAM, HARASSMENT, HATE, VIOLENCE, NSFW, MISINFORMATION, OTHER)";
-
+  "Rapor sebebi (SPAM, TACİZ, NEFRET, ŞİDDET, NSFW, YANLIŞ BİLGİ, DİĞER)";
 function normalizeReason(input: string) {
   const normalized = input.trim().toUpperCase();
   const validReasons = new Set([
@@ -23,7 +22,7 @@ function normalizeReason(input: string) {
 export function ReportUserButton({ userId }: { userId: string }) {
   const reportUser = api.report.create.useMutation({
     onSuccess: () => {
-      alert("Thanks, your report was submitted.");
+      alert("Teşekkürler, raporunuz gönderildi.");
     },
     onError: (error) => {
       alert(error.message);
@@ -61,7 +60,7 @@ export function ReportUserButton({ userId }: { userId: string }) {
       onClick={handleReport}
       disabled={reportUser.isPending}
       className="rounded-full border border-white/20 p-2 hover:bg-white/10 disabled:opacity-50"
-      title="Report user"
+      title="Kullanıcıyı bildir"
     >
       <Flag className="h-5 w-5" />
     </button>

@@ -9,7 +9,7 @@ type NotificationPrefs = {
   mentions: boolean;
 };
 
-const storageKey = "bettertwitter.notification-preferences";
+const storageKey = "flowzest.notification-preferences";
 
 const defaultPrefs: NotificationPrefs = {
   likes: true,

@@ -32,12 +32,14 @@ export function BookmarksClient() {
 
       <div className="overflow-hidden rounded-b-3xl border-x border-b border-white/10">
         {isLoading ? (
-          <div className="p-4 text-sm text-gray-400">Loading bookmarks...</div>
+          <div className="p-4 text-sm text-gray-400">
+            Yer işaretleri yükleniyor...
+          </div>
         ) : visiblePosts.length > 0 ? (
           visiblePosts.map((post) => <PostItem key={post.id} post={post} />)
         ) : (
           <div className="p-6 text-sm text-gray-400">
-            Save posts here to read them later.
+            Buraya gönderi kaydedin, sonra okuyun.
           </div>
         )}
       </div>

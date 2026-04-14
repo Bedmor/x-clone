@@ -12,9 +12,9 @@ export default async function BookmarksPage() {
     return (
       <div className="flex flex-col gap-4 p-4">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h1 className="text-2xl font-bold">Bookmarks</h1>
+          <h1 className="text-2xl font-bold">Yer İşaretleri</h1>
           <p className="mt-2 text-sm text-gray-400">
-            Sign in to save posts and view them later.
+            Gönderileri kaydetmek ve daha sonra görüntülemek için giriş yapın.
           </p>
           <Link
             href="/signin"

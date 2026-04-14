@@ -11,13 +11,13 @@ import { BottomNav } from "./_components/BottomNav";
 import { ThemeInitializer } from "./_components/ThemeToggle";
 
 export const metadata: Metadata = {
-  title: "BetterTwitter",
+  title: "Flowzest",
   description: "A social media clone",
   icons: [{ rel: "icon", url: "/favicon.png" }],
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "BetterTwitter",
+    title: "Flowzest",
   },
 };
 

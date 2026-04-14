@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 type Theme = "dark" | "light";
 
-const storageKey = "bettertwitter.theme";
+const storageKey = "flowzest.theme";
 
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const storageKey = "bettertwitter.muted-keywords";
+const storageKey = "flowzest.muted-keywords";
 
 function parseKeywords(value: string) {
   return Array.from(

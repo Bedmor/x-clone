@@ -19,7 +19,7 @@ export async function Sidebar() {
     <div className="hidden h-full w-64 flex-col border-r border-white/20 p-4 md:flex">
       <div className="mb-8 flex items-center gap-2 text-2xl font-bold">
         <Logo className="h-8 w-8 text-white" />
-        <span>BetterTwitter</span>
+        <span>Flowzest</span>
       </div>
       <nav className="flex flex-col gap-4">
         <Link
@@ -27,14 +27,14 @@ export async function Sidebar() {
           className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
         >
           <Home className="h-7 w-7" />
-          <span>Home</span>
+          <span>Ana Sayfa</span>
         </Link>
         <Link
           href="/explore"
           className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
         >
           <Search className="h-7 w-7" />
-          <span>Explore</span>
+          <span>Keşfet</span>
         </Link>
         {session && (
           <Link
@@ -85,7 +85,7 @@ export async function Sidebar() {
             className="flex w-full items-center justify-center gap-2 rounded-full bg-red-500 py-3 font-bold hover:bg-red-600"
           >
             <LogOut className="h-5 w-5" />
-            <span>Sign Out</span>
+            <span>Çıkış Yap</span>
           </Link>
         ) : (
           <>
@@ -93,7 +93,7 @@ export async function Sidebar() {
               href="/signin"
               className="block w-full rounded-full bg-blue-500 py-2 text-center font-bold hover:bg-blue-600"
             >
-              Sign In
+              Giriş Yap
             </Link>
             <Link
               href="/signup"
