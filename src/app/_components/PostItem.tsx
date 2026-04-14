@@ -549,19 +549,19 @@ export const PostItem = React.memo(function PostItem({
                         onClick={() => handleOpenShareTarget("whatsapp")}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        WhatsApp'ta paylaş
+                        WhatsApp&apos;ta paylaş
                       </button>
                       <button
                         onClick={() => handleOpenShareTarget("telegram")}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Telegram'da paylaş
+                        Telegram&apos;da paylaş
                       </button>
                       <button
                         onClick={() => handleOpenShareTarget("x")}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        X'te paylaş
+                        X&apos;te paylaş
                       </button>
                       <button
                         onClick={() => void handleNativeShare()}
