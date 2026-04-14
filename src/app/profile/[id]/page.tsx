@@ -73,7 +73,7 @@ export default async function ProfilePage({
             )}
           </div>
           <h2 className="mt-4 text-2xl font-bold">{user.name}</h2>
-          <p className="text-gray-500">@{user.id}</p>
+          <p className="text-gray-500">@{user.username ?? user.id}</p>
           {user.bio && <p className="mt-2 whitespace-pre-wrap">{user.bio}</p>}
           <div className="mt-2 flex gap-4 text-sm text-gray-500">
             {user.location && <span>📍 {user.location}</span>}
