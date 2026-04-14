@@ -411,7 +411,7 @@ export default function ChatPage() {
   };
 
   if (!session) {
-    return <div className="p-4 text-center">Please sign in to chat.</div>;
+    return <div className="p-4 text-center">Sohbet için giriş yapın.</div>;
   }
 
   return (
@@ -423,7 +423,7 @@ export default function ChatPage() {
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/20 p-4">
-          <h2 className="text-xl font-bold">Messages</h2>
+          <h2 className="text-xl font-bold">Mesajlar</h2>
           <button
             onClick={() => setShowNewChatModal(true)}
             className="rounded-full p-2 hover:bg-white/10"
@@ -470,7 +470,7 @@ export default function ChatPage() {
                       <span
                         className={`truncate ${isUnread ? "font-bold text-white" : "text-gray-300"}`}
                       >
-                        {otherParticipant?.name ?? "Unknown User"}
+                        {otherParticipant?.name ?? "Bilinmeyen Kullanıcı"}
                       </span>
                       {lastMessage && (
                         <span className="text-xs text-gray-500">
@@ -484,8 +484,8 @@ export default function ChatPage() {
                       {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                       {lastMessage?.content ||
                         (lastMessage?.attachmentUrl
-                          ? "Sent an image"
-                          : "No messages yet")}
+                          ? "Bir resim gönderdi"
+                          : "Henüz mesaj yok")}
                     </p>
                   </div>
                 </div>
@@ -544,20 +544,20 @@ export default function ChatPage() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold">
-                          {otherParticipant?.name ?? "Unknown User"}
+                          {otherParticipant?.name ?? "Bilinmeyen Kullanıcı"}
                         </span>
                         {isOnline ? (
-                          <span className="text-xs text-green-500">Online</span>
+                          <span className="text-xs text-green-500">Çevrimiçi</span>
                         ) : (
                           <span className="text-xs text-gray-500">
                             {otherParticipantData?.hasSeenLatest
                               ? otherParticipant?.lastSeen
-                                ? `Last seen ${formatDistanceToNow(
+                                ? `Son görülme ${formatDistanceToNow(
                                     new Date(otherParticipant.lastSeen),
                                     { addSuffix: true },
                                   )}`
-                                : "Seen"
-                              : "Delivered"}
+                                : "Görüldü"
+                              : "Teslim edildi"}
                           </span>
                         )}
                       </div>
@@ -582,7 +582,7 @@ export default function ChatPage() {
                     {isFetchingNextPage ? (
                       <Logo className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Load older messages"
+                      "Eski mesajları yükle"
                     )}
                   </button>
                 </div>
@@ -611,7 +611,7 @@ export default function ChatPage() {
                           {message.attachmentUrl && (
                             <Image
                               src={message.attachmentUrl}
-                              alt="Attachment"
+                              alt="Ek"
                               width={300}
                               height={200}
                               className="mb-2 max-h-60 rounded-lg object-cover"
@@ -638,8 +638,8 @@ export default function ChatPage() {
                                     ?.participants.find(
                                       (p) => p.userId !== session.user.id,
                                     )?.hasSeenLatest
-                                    ? " • Seen"
-                                    : " • Sent"}
+                                    ? " • Görüldü"
+                                    : " • Gönderildi"}
                                 </span>
                               )}
                           </div>
@@ -652,7 +652,7 @@ export default function ChatPage() {
                   {typingUsers.size > 0 && (
                     <div className="flex justify-start">
                       <div className="rounded-2xl bg-gray-800 px-4 py-2 text-sm text-gray-400 italic">
-                        Typing...
+                        Yazıyor...
                       </div>
                     </div>
                   )}
@@ -693,7 +693,7 @@ export default function ChatPage() {
                     setNewMessage(e.target.value);
                     handleTyping();
                   }}
-                  placeholder="Type a message..."
+                  placeholder="Mesaj yaz..."
                   className="flex-1 rounded-full border border-white/20 bg-black px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
                 />
                 <button
@@ -708,7 +708,7 @@ export default function ChatPage() {
           </>
         ) : (
           <div className="flex h-full items-center justify-center text-gray-500">
-            Select a conversation to start chatting
+            Sohbet başlatmak için konuşma seçin
           </div>
         )}
       </div>

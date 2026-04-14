@@ -101,7 +101,7 @@ export function ExploreClient() {
           className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10"
         >
           <div className="text-sm text-gray-400">#{tag.tag}</div>
-          <div className="mt-1 text-xl font-bold">{tag.count} posts</div>
+          <div className="mt-1 text-xl font-bold">{tag.count} gönderi</div>
         </Link>
       )),
     [trendingTags],
@@ -118,23 +118,23 @@ export function ExploreClient() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search people, posts, or hashtags"
+            placeholder="Kişi, gönderi veya hashtag ara"
             className="flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 outline-none placeholder:text-gray-500 focus:border-blue-500"
           />
           <button
             type="submit"
             className="rounded-2xl bg-blue-500 px-4 py-3 font-semibold hover:bg-blue-600"
           >
-            Search
+            Ara
           </button>
         </form>
         <div className="mt-4 flex flex-wrap gap-2">
           {(
             [
-              { id: "top", label: "Top", icon: Sparkles },
-              { id: "people", label: "People", icon: Users },
-              { id: "posts", label: "Posts", icon: Newspaper },
-              { id: "tags", label: "Tags", icon: Hash },
+              { id: "top", label: "Öne çıkan", icon: Sparkles },
+              { id: "people", label: "Kişiler", icon: Users },
+              { id: "posts", label: "Gönderiler", icon: Newspaper },
+              { id: "tags", label: "Etiketler", icon: Hash },
             ] as const
           ).map(({ id, label, icon: Icon }) => (
             <button
@@ -165,7 +165,7 @@ export function ExploreClient() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-lg font-bold">
             <TrendingUp className="h-5 w-5" />
-            Trending tags
+            Trend etiketler
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {trendingLoading ? (
@@ -181,18 +181,17 @@ export function ExploreClient() {
                 >
                   <div className="flex items-center gap-2 text-sm text-gray-400">
                     <Hash className="h-4 w-4" />
-                    Trending
+                    Trend
                   </div>
                   <div className="mt-2 text-xl font-bold">#{tag.tag}</div>
                   <div className="mt-1 text-sm text-gray-400">
-                    {tag.count} posts
+                    {tag.count} gönderi
                   </div>
                 </Link>
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-gray-400">
-                No hashtags yet. Start by posting with a tag like #launch or
-                #design.
+                Henüz etiket yok. #launch veya #design gibi bir etiketle paylaşım yaparak başla.
               </div>
             )}
           </div>
@@ -200,12 +199,12 @@ export function ExploreClient() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-lg font-bold">
               <Newspaper className="h-5 w-5" />
-              Trending posts
+              Trend gönderiler
             </div>
             <div className="overflow-hidden rounded-3xl border border-white/10">
               {trendingPostsLoading ? (
                 <div className="p-4 text-sm text-gray-400">
-                  Loading trending posts...
+                  Trend gönderiler yükleniyor...
                 </div>
               ) : trendingPosts.length > 0 ? (
                 visibleTrendingPosts.map((post) => (
@@ -213,7 +212,7 @@ export function ExploreClient() {
                 ))
               ) : (
                 <div className="p-4 text-sm text-gray-400">
-                  No trending posts yet.
+                  Henüz trend gönderi yok.
                 </div>
               )}
             </div>
@@ -223,11 +222,11 @@ export function ExploreClient() {
         <div className="space-y-8">
           {showPeople && (
             <section>
-              <div className="mb-3 text-lg font-bold">People</div>
+              <div className="mb-3 text-lg font-bold">Kişiler</div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {usersLoading ? (
                   <div className="text-sm text-gray-400">
-                    Searching people...
+                    Kişiler aranıyor...
                   </div>
                 ) : users.length > 0 ? (
                   users.map((user) => (
@@ -245,7 +244,7 @@ export function ExploreClient() {
                     </Link>
                   ))
                 ) : (
-                  <div className="text-sm text-gray-400">No people found.</div>
+                  <div className="text-sm text-gray-400">Kişi bulunamadı.</div>
                 )}
               </div>
             </section>
@@ -253,10 +252,10 @@ export function ExploreClient() {
 
           {showTags && (
             <section>
-              <div className="mb-3 text-lg font-bold">Tags</div>
+              <div className="mb-3 text-lg font-bold">Etiketler</div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {tagsLoading ? (
-                  <div className="text-sm text-gray-400">Searching tags...</div>
+                  <div className="text-sm text-gray-400">Etiketler aranıyor...</div>
                 ) : tags.length > 0 ? (
                   tags.map((tag) => (
                     <Link
@@ -266,13 +265,13 @@ export function ExploreClient() {
                     >
                       <div className="text-lg font-bold">#{tag.tag}</div>
                       <div className="text-sm text-gray-400">
-                        {tag.count} posts
+                        {tag.count} gönderi
                       </div>
                     </Link>
                   ))
                 ) : (
                   <div className="text-sm text-gray-400">
-                    No matching tags found.
+                    Eşleşen etiket bulunamadı.
                   </div>
                 )}
               </div>
@@ -281,11 +280,11 @@ export function ExploreClient() {
 
           {showPosts && (
             <section>
-              <div className="mb-3 text-lg font-bold">Posts</div>
+              <div className="mb-3 text-lg font-bold">Gönderiler</div>
               <div className="overflow-hidden rounded-3xl border border-white/10">
                 {postsLoading ? (
                   <div className="p-4 text-sm text-gray-400">
-                    Searching posts...
+                    Gönderiler aranıyor...
                   </div>
                 ) : posts.length > 0 ? (
                   posts
@@ -295,7 +294,7 @@ export function ExploreClient() {
                     .map((post) => <PostItem key={post.id} post={post} />)
                 ) : (
                   <div className="p-4 text-sm text-gray-400">
-                    No posts found.
+                    Gönderi bulunamadı.
                   </div>
                 )}
               </div>

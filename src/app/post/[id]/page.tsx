@@ -59,7 +59,7 @@ function ThreadTrail({ post }: { post: PostType }) {
 
   return (
     <div className="border-b border-white/20">
-      <div className="p-4 text-sm font-semibold text-gray-400">Thread</div>
+      <div className="p-4 text-sm font-semibold text-gray-400">Konuşma</div>
       {ancestors.map((ancestor) => (
         <ThreadCard key={ancestor.id} post={ancestor} />
       ))}
@@ -86,7 +86,7 @@ export default async function PostPage({
     <HydrateClient>
       <div className="flex flex-col">
         <div className="sticky top-0 z-10 border-b border-white/20 bg-black/50 p-4 backdrop-blur">
-          <h1 className="text-xl font-bold">Post</h1>
+          <h1 className="text-xl font-bold">Gönderi</h1>
         </div>
 
         <ThreadTrail post={post} />
@@ -94,10 +94,10 @@ export default async function PostPage({
         <PostItem post={post} />
 
         <div className="border-b border-white/20 p-4 text-xl font-bold">
-          Replies
+          Yanıtlar
         </div>
 
-        <CreatePost parentId={postId} placeholder="Post your reply" />
+        <CreatePost parentId={postId} placeholder="Yanıtınızı yazın" />
 
         {post.replies.map((reply) => (
           <PostItem key={reply.id} post={reply} />

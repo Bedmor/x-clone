@@ -42,7 +42,7 @@ export async function Sidebar() {
             className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
           >
             <Bookmark className="h-7 w-7" />
-            <span>Bookmarks</span>
+            <span>Yer İşaretleri</span>
           </Link>
         )}
         {session && (
@@ -52,28 +52,28 @@ export async function Sidebar() {
               className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
             >
               <Bell className="h-7 w-7" />
-              <span>Notifications</span>
+              <span>Bildirimler</span>
             </Link>
             <Link
               href="/chat"
               className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
             >
               <Mail className="h-7 w-7" />
-              <span>Messages</span>
+              <span>Mesajlar</span>
             </Link>
             <Link
               href={`/profile/${session.user.id}`}
               className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
             >
               <User className="h-7 w-7" />
-              <span>Profile</span>
+              <span>Profil</span>
             </Link>
             <Link
               href="/settings"
               className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
             >
               <Settings className="h-7 w-7" />
-              <span>Settings</span>
+              <span>Ayarlar</span>
             </Link>
           </>
         )}
@@ -99,7 +99,7 @@ export async function Sidebar() {
               href="/signup"
               className="block w-full rounded-full border border-white/20 py-2 text-center font-bold hover:bg-white/10"
             >
-              Sign Up
+              Kayıt Ol
             </Link>
           </>
         )}

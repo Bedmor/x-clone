@@ -35,7 +35,7 @@ export function ReplyModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/20 bg-black p-4">
         <div className="mb-4 flex justify-between">
-          <h2 className="text-xl font-bold">Reply</h2>
+          <h2 className="text-xl font-bold">Yanıtla</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
             ✕
           </button>
@@ -43,7 +43,7 @@ export function ReplyModal({
         <form onSubmit={handleSubmit}>
           <textarea
             className="mb-4 w-full resize-none border-b border-white/20 bg-transparent text-xl outline-none"
-            placeholder="Post your reply"
+            placeholder="Yanıtınızı yazın"
             rows={4}
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -55,7 +55,7 @@ export function ReplyModal({
               disabled={createReply.isPending || !content.trim()}
               className="rounded-full bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
             >
-              {createReply.isPending ? "Replying..." : "Reply"}
+              {createReply.isPending ? "Yanıtlanıyor..." : "Yanıtla"}
             </button>
           </div>
         </form>

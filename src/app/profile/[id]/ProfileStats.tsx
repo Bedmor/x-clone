@@ -23,13 +23,13 @@ export function ProfileStats({
           onClick={() => setModalType("following")}
           className="hover:underline"
         >
-          <strong className="text-white">{followingCount}</strong> Following
+          <strong className="text-white">{followingCount}</strong> Takip edilenler
         </button>
         <button
           onClick={() => setModalType("followers")}
           className="hover:underline"
         >
-          <strong className="text-white">{followersCount}</strong> Followers
+          <strong className="text-white">{followersCount}</strong> Takipçiler
         </button>
       </div>
       {modalType && (

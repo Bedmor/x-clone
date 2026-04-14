@@ -82,15 +82,15 @@ export function MutedKeywordsSettings() {
   return (
     <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
       <div>
-        <h2 className="text-xl font-bold">Muted keywords</h2>
+        <h2 className="text-xl font-bold">Susturulan kelimeler</h2>
         <p className="text-sm text-gray-400">
-          Hide posts containing these words or phrases.
+          Bu kelimeleri veya ifadeleri içeren gönderileri gizle.
         </p>
       </div>
       <textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="spam\ncrypto\nspoilers"
+        placeholder="spam\nkripto\nspoiler"
         rows={5}
         className="w-full rounded-2xl border border-white/10 bg-black/30 p-3 text-sm outline-none placeholder:text-gray-500 focus:border-blue-500"
       />
@@ -100,21 +100,21 @@ export function MutedKeywordsSettings() {
           onClick={handleSave}
           className="rounded-full bg-blue-500 px-4 py-2 font-semibold text-white hover:bg-blue-600"
         >
-          Save keywords
+          Anahtar kelimeleri kaydet
         </button>
         <button
           type="button"
           onClick={handleClear}
           className="rounded-full border border-white/10 px-4 py-2 font-semibold hover:bg-white/10"
         >
-          Clear
+          Temizle
         </button>
-        {saved && <span className="text-sm text-gray-400">Saved locally</span>}
+        {saved && <span className="text-sm text-gray-400">Yerel olarak kaydedildi</span>}
       </div>
       <div className="text-sm text-gray-400">
         {preview.length > 0
-          ? `Muting ${preview.length} keyword${preview.length === 1 ? "" : "s"}.`
-          : "No muted keywords set."}
+          ? `Susturulan ${preview.length} kelime${preview.length === 1 ? "" : "ler"}.`
+          : "Susturulan kelime yok."}
       </div>
     </div>
   );

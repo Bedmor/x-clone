@@ -61,7 +61,7 @@ export function ThemeToggle() {
       ) : (
         <MoonStar className="h-4 w-4" />
       )}
-      {theme === "dark" ? "Light mode" : "Dark mode"}
+      {theme === "dark" ? "Açık mod" : "Koyu mod"}
     </button>
   );
 }

@@ -35,11 +35,11 @@ export function ReportUserButton({ userId }: { userId: string }) {
 
     const reason = normalizeReason(reasonInput);
     if (!reason) {
-      alert("Please use one of the listed reason values.");
+      alert("Lütfen listelenen sebeplerden birini kullanın.");
       return;
     }
 
-    const details = window.prompt("Optional details", "") ?? undefined;
+    const details = window.prompt("İsteğe bağlı detaylar", "") ?? undefined;
 
     reportUser.mutate({
       userId,

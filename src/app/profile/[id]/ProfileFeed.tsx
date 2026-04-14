@@ -86,7 +86,7 @@ export function ProfileFeed({
                 : "text-gray-500"
             }`}
           >
-            Posts
+            Gönderiler
           </button>
           <button
             onClick={() => setTab("replies")}
@@ -96,7 +96,7 @@ export function ProfileFeed({
                 : "text-gray-500"
             }`}
           >
-            Replies
+            Yanıtlar
           </button>
           <button
             onClick={() => setTab("likes")}
@@ -106,7 +106,7 @@ export function ProfileFeed({
                 : "text-gray-500"
             }`}
           >
-            Likes
+            Beğeniler
           </button>
         </div>
       </div>
@@ -118,14 +118,14 @@ export function ProfileFeed({
             <div className="border-b border-white/20">
               <div className="flex items-center gap-2 px-4 pt-2 text-xs font-bold text-gray-500">
                 <Pin size={12} className="fill-gray-500" />
-                <span>Pinned Post</span>
+                <span>Sabitlemeli Gönderi</span>
               </div>
               <PostItem post={pinnedPostForRender} />
             </div>
           )}
           {visiblePosts.length === 0 && !pinnedPostForRender ? (
             <div className="p-4 text-center text-gray-500">
-              No items to display.
+              Görüntülenecek gönderi yok.
             </div>
           ) : (
             visiblePosts

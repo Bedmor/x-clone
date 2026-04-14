@@ -30,7 +30,7 @@ export function SharePostModal({
     onSuccess: () => {
       onClose();
       setQuery("");
-      alert("Post sent in DM.");
+      alert("Gönderi DM ile gönderildi.");
     },
     onError: (error) => {
       alert(error.message);
@@ -43,7 +43,7 @@ export function SharePostModal({
     const preview = content?.trim()
       ? `\"${content.trim().slice(0, 120)}\"\n`
       : "";
-    const media = mediaUrls?.length ? `\nMedia: ${mediaUrls.join(" ")}` : "";
+    const media = mediaUrls?.length ? `\nMedya: ${mediaUrls.join(" ")}` : "";
     return `${preview}${link}${media}`;
   }, [content, mediaUrls, postId]);
 
@@ -68,7 +68,7 @@ export function SharePostModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-2xl border border-white/20 bg-black p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Send post in DM</h3>
+          <h3 className="text-lg font-semibold">Gönderiyi DM ile gönder</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             x
           </button>
@@ -77,13 +77,13 @@ export function SharePostModal({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search user"
+          placeholder="Kullanıcı ara"
           className="mb-3 w-full rounded-xl border border-white/20 bg-black px-3 py-2"
         />
 
         <div className="max-h-80 space-y-2 overflow-y-auto">
           {isLoading ? (
-            <div className="text-sm text-gray-400">Searching...</div>
+            <div className="text-sm text-gray-400">Aranıyor...</div>
           ) : users.length > 0 ? (
             users.map((user) => (
               <button
@@ -98,7 +98,7 @@ export function SharePostModal({
                   className="h-10 w-10"
                 />
                 <div>
-                  <div className="font-medium">{user.name ?? "Unknown"}</div>
+                  <div className="font-medium">{user.name ?? "Bilinmeyen"}</div>
                   <div className="text-sm text-gray-400">
                     @{user.username ?? user.id}
                   </div>
@@ -106,7 +106,7 @@ export function SharePostModal({
               </button>
             ))
           ) : (
-            <div className="text-sm text-gray-400">No users found.</div>
+            <div className="text-sm text-gray-400">Kullanıcı bulunamadı.</div>
           )}
         </div>
       </div>

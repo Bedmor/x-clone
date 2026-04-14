@@ -31,7 +31,7 @@ export function MessageButton({
       onClick={handleMessage}
       disabled={(disabled ?? false) || createConversation.isPending}
       className="rounded-full border border-white/20 p-2 hover:bg-white/10 disabled:opacity-50"
-      title={disabled ? "This user is not accepting messages" : "Message"}
+      title={disabled ? "Bu kullanıcı mesaj kabul etmiyor" : "Mesaj"}
     >
       <Mail className="h-5 w-5" />
     </button>

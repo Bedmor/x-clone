@@ -33,10 +33,10 @@ export default async function HashtagPage({
             href="/explore"
             className="text-sm text-gray-400 hover:text-white"
           >
-            Back to explore
+            Keşfete geri dön
           </Link>
           <h1 className="mt-1 text-2xl font-bold">#{tag}</h1>
-          <p className="text-sm text-gray-400">Posts mentioning this tag</p>
+          <p className="text-sm text-gray-400">Bu etiketi içeren gönderiler</p>
         </div>
 
         <div className="overflow-hidden rounded-b-3xl border-x border-b border-white/10">
@@ -44,7 +44,7 @@ export default async function HashtagPage({
             posts.map((post) => <PostItem key={post.id} post={post} />)
           ) : (
             <div className="p-6 text-sm text-gray-400">
-              No posts yet for #{tag}. Be the first to post it.
+              #{tag} için henüz gönderi yok. İlk sen paylaş.
             </div>
           )}
         </div>

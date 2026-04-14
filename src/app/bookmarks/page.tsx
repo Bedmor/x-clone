@@ -20,7 +20,7 @@ export default async function BookmarksPage() {
             href="/signin"
             className="mt-4 inline-flex rounded-full bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-600"
           >
-            Sign in
+            Giriş yap
           </Link>
         </div>
       </div>

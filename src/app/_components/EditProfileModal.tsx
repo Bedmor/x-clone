@@ -73,8 +73,8 @@ export function EditProfileModal({
         headerImage: newHeaderImageUrl,
       });
     } catch (error) {
-      console.error("Error uploading files:", error);
-      alert("Failed to upload images");
+      console.error("Dosya yüklenirken hata oluştu:", error);
+      alert("Görüntüler yüklenemedi");
     } finally {
       setIsUploading(false);
     }
@@ -86,7 +86,7 @@ export function EditProfileModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/20 bg-black p-4">
         <div className="mb-4 flex justify-between">
-          <h2 className="text-xl font-bold">Edit Profile</h2>
+          <h2 className="text-xl font-bold">Profili Düzenle</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
             ✕
           </button>
@@ -98,7 +98,7 @@ export function EditProfileModal({
               {headerImage && (
                 <Image
                   src={headerImage}
-                  alt="Header Preview"
+                  alt="Başlık Önizlemesi"
                   fill
                   className="object-cover opacity-75"
                 />
@@ -132,7 +132,7 @@ export function EditProfileModal({
                 {image && (
                   <Image
                     src={image}
-                    alt="Profile Preview"
+                    alt="Profil Önizlemesi"
                     width={96}
                     height={96}
                     className="h-full w-full rounded-full object-cover opacity-75"
@@ -165,7 +165,7 @@ export function EditProfileModal({
 
           <div className="mt-4">
             <label className="block text-sm font-bold text-gray-500">
-              Name
+              İsim
             </label>
             <input
               type="text"
@@ -175,7 +175,7 @@ export function EditProfileModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-500">Bio</label>
+            <label className="block text-sm font-bold text-gray-500">Biyografi</label>
             <textarea
               className="w-full resize-none rounded border border-white/20 bg-transparent p-2 text-white outline-none focus:border-blue-500"
               rows={3}
@@ -185,7 +185,7 @@ export function EditProfileModal({
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-500">
-              Location
+              Konum
             </label>
             <input
               type="text"
@@ -196,7 +196,7 @@ export function EditProfileModal({
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-500">
-              Website
+              Web sitesi
             </label>
             <input
               type="text"
@@ -211,7 +211,7 @@ export function EditProfileModal({
               disabled={updateProfile.isPending || isUploading}
               className="rounded-full bg-white px-4 py-2 font-bold text-black hover:bg-white/90 disabled:opacity-50"
             >
-              {updateProfile.isPending || isUploading ? "Saving..." : "Save"}
+              {updateProfile.isPending || isUploading ? "Kaydediliyor..." : "Kaydet"}
             </button>
           </div>
         </form>

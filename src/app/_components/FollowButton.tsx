@@ -34,7 +34,7 @@ export function FollowButton({
           : "bg-white text-black hover:bg-white/90"
       }`}
     >
-      {isFollowing ? "Following" : "Follow"}
+      {isFollowing ? "Takiptesin" : "Takip Et"}
     </button>
   );
 }

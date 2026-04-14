@@ -33,13 +33,13 @@ export default async function ProfilePage({
       <div className="flex flex-col">
         <div className="sticky top-0 z-10 border-b border-white/20 bg-black/50 p-4 backdrop-blur">
           <h1 className="text-xl font-bold">{user.name}</h1>
-          <p className="text-sm text-gray-500">{user._count.posts} posts</p>
+          <p className="text-sm text-gray-500">{user._count.posts} gönderi</p>
         </div>
         <div className="relative h-48 bg-gray-800">
           {user.headerImage && (
             <Image
               src={user.headerImage}
-              alt="Header"
+              alt="Başlık"
               width={1200}
               height={320}
               className="h-full w-full object-cover"

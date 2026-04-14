@@ -16,7 +16,7 @@ export default function SettingsPage() {
 
   const updateUsername = api.user.updateUsername.useMutation({
     onSuccess: () => {
-      alert("Username updated!");
+      alert("Kullanıcı adı güncellendi!");
       setUsername("");
       router.refresh();
     },
@@ -27,7 +27,7 @@ export default function SettingsPage() {
 
   const updatePassword = api.user.updatePassword.useMutation({
     onSuccess: () => {
-      alert("Password updated!");
+      alert("Şifre güncellendi!");
       setPassword("");
     },
     onError: (e) => {

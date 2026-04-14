@@ -66,18 +66,18 @@ export function NotificationPreferences() {
   }, [prefs]);
 
   const options = [
-    { key: "likes", label: "Likes" },
-    { key: "replies", label: "Replies" },
-    { key: "follows", label: "Follows" },
-    { key: "mentions", label: "Mentions" },
+    { key: "likes", label: "Beğeniler" },
+    { key: "replies", label: "Yanıtlar" },
+    { key: "follows", label: "Takipler" },
+    { key: "mentions", label: "Bahsetmeler" },
   ] as const;
 
   return (
     <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
       <div>
-        <h2 className="text-xl font-bold">Notification preferences</h2>
+        <h2 className="text-xl font-bold">Bildirim tercihleri</h2>
         <p className="text-sm text-gray-400">
-          Hide notification types you do not want to see.
+          Görmek istemediğiniz bildirim türlerini gizleyin.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

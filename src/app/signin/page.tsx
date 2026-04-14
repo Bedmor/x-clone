@@ -53,24 +53,24 @@ export default function SignInPage() {
             </div>
           )}
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-gray-500">Email</label>
+            <label className="text-sm text-gray-500">E-posta</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="rounded border border-white/20 bg-black p-2 focus:border-blue-500 focus:outline-none"
-              placeholder="Enter your email"
+              placeholder="E-posta adresinizi girin"
               required
             />
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm text-gray-500">Password</label>
+            <label className="text-sm text-gray-500">Şifre</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="rounded border border-white/20 bg-black p-2 focus:border-blue-500 focus:outline-none"
-              placeholder="Enter your password"
+              placeholder="Şifrenizi girin"
               required
             />
           </div>
@@ -132,9 +132,9 @@ export default function SignInPage() {
           </div>
 
           <div className="text-center text-sm text-gray-500">
-            Don&apos;t have an account?{" "}
+            Hesabın yok mu?{" "}
             <Link href="/signup" className="text-blue-500 hover:underline">
-              Sign up
+              Kaydol
             </Link>
           </div>
         </form>

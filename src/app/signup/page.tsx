@@ -79,7 +79,7 @@ export default function SignupPage() {
             }
             className="w-full rounded-full bg-blue-500 py-3 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
           >
-            {register.isPending ? "Creating account..." : "Sign Up"}
+            {register.isPending ? "Hesap oluşturuluyor..." : "Kayıt Ol"}
           </button>
 
           <div className="relative my-6">

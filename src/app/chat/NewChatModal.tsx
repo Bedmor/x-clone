@@ -23,7 +23,7 @@ export function NewChatModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-white/20 bg-black p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">New Message</h2>
+          <h2 className="text-xl font-bold">Yeni Mesaj</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
             ✕
           </button>
@@ -33,7 +33,7 @@ export function NewChatModal({
           <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
-            placeholder="Search people"
+            placeholder="Kişi ara"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full rounded-full border border-white/20 bg-black py-2 pr-4 pl-10 text-white focus:border-blue-500 focus:outline-none"
@@ -47,7 +47,7 @@ export function NewChatModal({
               <Logo className="h-6 w-6 animate-spin text-white" />
             </div>
           ) : users?.length === 0 && query ? (
-            <div className="p-4 text-center text-gray-500">No users found</div>
+            <div className="p-4 text-center text-gray-500">Kullanıcı bulunamadı</div>
           ) : (
             <div className="flex flex-col gap-4">
               {users?.map((user) => (

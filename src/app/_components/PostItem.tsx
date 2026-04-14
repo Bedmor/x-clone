@@ -180,7 +180,7 @@ export const PostItem = React.memo(function PostItem({
 
   const handleReportPost = async () => {
     const reasonInput = window.prompt(
-      "Report reason (SPAM, HARASSMENT, HATE, VIOLENCE, NSFW, MISINFORMATION, OTHER)",
+      "Rapor sebebi (SPAM, TACİZ, NEFRET, ŞİDDET, NSFW, YANLIŞ BİLGİ, DİĞER)",
       "SPAM",
     );
     if (!reasonInput) return;
@@ -197,11 +197,11 @@ export const PostItem = React.memo(function PostItem({
     ]);
 
     if (!validReasons.has(reason)) {
-      alert("Please use one of the listed reason values.");
+      alert("Lütfen listelenen sebeplerden birini kullanın.");
       return;
     }
 
-    const details = window.prompt("Optional details", "") ?? undefined;
+    const details = window.prompt("İsteğe bağlı detaylar", "") ?? undefined;
 
     setIsReporting(true);
     try {
@@ -218,14 +218,14 @@ export const PostItem = React.memo(function PostItem({
       const result = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        alert(result.error ?? "Failed to submit report.");
+        alert(result.error ?? "Rapor gönderilemedi.");
         return;
       }
 
-      alert("Thanks, your report was submitted.");
+      alert("Teşekkürler, raporunuz gönderildi.");
     } catch (error) {
       alert(
-        error instanceof Error ? error.message : "Failed to submit report.",
+        error instanceof Error ? error.message : "Rapor gönderilemedi.",
       );
     } finally {
       setIsReporting(false);
@@ -236,19 +236,19 @@ export const PostItem = React.memo(function PostItem({
     const url = `${window.location.origin}/post/${dp.id}`;
     await navigator.clipboard.writeText(url);
     setShowShareMenu(false);
-    alert("Post link copied.");
+    alert("Gönderi bağlantısı kopyalandı.");
   };
 
   const handleNativeShare = async () => {
     const url = `${window.location.origin}/post/${dp.id}`;
-    const text = dp.content?.trim() ?? "Check this post";
+    const text = dp.content?.trim() ?? "Bu gönderiye bak";
 
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Post", text, url });
+        await navigator.share({ title: "Gönderi", text, url });
       } else {
         await navigator.clipboard.writeText(url);
-        alert("Share API unavailable, link copied instead.");
+        alert("Paylaşım API'si kullanılamıyor, bağlantı kopyalandı.");
       }
     } finally {
       setShowShareMenu(false);
@@ -257,7 +257,7 @@ export const PostItem = React.memo(function PostItem({
 
   const handleOpenShareTarget = (target: "whatsapp" | "telegram" | "x") => {
     const url = `${window.location.origin}/post/${dp.id}`;
-    const text = dp.content?.trim() ?? "Check this post";
+    const text = dp.content?.trim() ?? "Bu gönderiye bak";
     const encodedText = encodeURIComponent(`${text}\n${url}`);
     const encodedUrl = encodeURIComponent(url);
 
@@ -282,7 +282,7 @@ export const PostItem = React.memo(function PostItem({
               href={`/profile/${post.createdBy.id}`}
               className="hover:underline"
             >
-              {post.createdBy.name} reposted
+              {post.createdBy.name} yeniden paylaştı
             </Link>
           </div>
         )}
@@ -298,7 +298,7 @@ export const PostItem = React.memo(function PostItem({
                 href={`/profile/${dp.createdBy.id}`}
                 className="font-bold hover:underline"
               >
-                {dp.createdBy.name ?? "Unknown"}
+                {dp.createdBy.name ?? "Bilinmeyen"}
               </Link>
               <Link
                 href={`/profile/${dp.createdBy.id}`}
@@ -366,7 +366,7 @@ export const PostItem = React.memo(function PostItem({
                       ) : (
                         <Image
                           src={url}
-                          alt="Post media"
+                          alt="Gönderi medyası"
                           width={1024}
                           height={1024}
                           unoptimized
@@ -381,7 +381,7 @@ export const PostItem = React.memo(function PostItem({
 
             {dp.poll && (
               <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-sm font-semibold text-gray-400">Poll</div>
+                <div className="text-sm font-semibold text-gray-400">Anket</div>
                 <div className="space-y-2">
                   {dp.poll.options.map((option: PollOption) => {
                     const isSelected = selectedOptionId === option.id;
@@ -418,7 +418,7 @@ export const PostItem = React.memo(function PostItem({
                   })}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {dp.poll.totalVotes} vote{dp.poll.totalVotes === 1 ? "" : "s"}
+                  {dp.poll.totalVotes} oy
                 </div>
               </div>
             )}
@@ -501,7 +501,7 @@ export const PostItem = React.memo(function PostItem({
                         }}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Repost
+                        Yeniden paylaş
                       </button>
                       <button
                         onClick={() => {
@@ -510,7 +510,7 @@ export const PostItem = React.memo(function PostItem({
                         }}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Quote
+                        Alıntı yap
                       </button>
                     </div>
                   </>
@@ -538,38 +538,38 @@ export const PostItem = React.memo(function PostItem({
                           }}
                           className="px-4 py-2 text-left hover:bg-white/10"
                         >
-                          Send in DM
+                          DM ile gönder
                         </button>
                       )}
                       <button
                         onClick={() => void handleCopyLink()}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Copy link
+                        Bağlantıyı kopyala
                       </button>
                       <button
                         onClick={() => handleOpenShareTarget("whatsapp")}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Share on WhatsApp
+                        WhatsApp'ta paylaş
                       </button>
                       <button
                         onClick={() => handleOpenShareTarget("telegram")}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Share on Telegram
+                        Telegram'da paylaş
                       </button>
                       <button
                         onClick={() => handleOpenShareTarget("x")}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Share on X
+                        X'te paylaş
                       </button>
                       <button
                         onClick={() => void handleNativeShare()}
                         className="px-4 py-2 text-left hover:bg-white/10"
                       >
-                        Other share options
+                        Diğer paylaşım seçenekleri
                       </button>
                     </div>
                   </>
@@ -580,7 +580,7 @@ export const PostItem = React.memo(function PostItem({
                   onClick={() => void handleReportPost()}
                   disabled={isReporting}
                   className="flex items-center gap-1 hover:text-orange-400 disabled:opacity-50"
-                  title="Report post"
+                  title="Gönderiyi bildir"
                 >
                   <Flag />
                 </button>
@@ -612,11 +612,11 @@ export const PostItem = React.memo(function PostItem({
                         >
                           {dp.isPinned ? (
                             <>
-                              <PinOff size={16} /> Unpin
+                              <PinOff size={16} /> Sabitlemeyi kaldır
                             </>
                           ) : (
                             <>
-                              <Pin size={16} /> Pin to profile
+                              <Pin size={16} /> Profilde sabitle
                             </>
                           )}
                         </button>
@@ -625,7 +625,7 @@ export const PostItem = React.memo(function PostItem({
                             e.stopPropagation();
                             if (
                               confirm(
-                                "Are you sure you want to delete this post?",
+                                "Bu gönderiyi silmek istediğine emin misin?",
                               )
                             ) {
                               deletePost.mutate({ id: dp.id });
@@ -635,7 +635,7 @@ export const PostItem = React.memo(function PostItem({
                           className="flex items-center gap-2 px-4 py-2 text-left text-red-500 hover:bg-white/10"
                           disabled={deletePost.isPending}
                         >
-                          <Trash2 size={16} /> Delete
+                          <Trash2 size={16} /> Sil
                         </button>
                       </div>
                     </>

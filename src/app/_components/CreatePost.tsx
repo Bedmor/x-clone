@@ -10,7 +10,7 @@ import { ImageCropperModal } from "./ImageCropperModal";
 
 export function CreatePost({
   parentId,
-  placeholder = "What is happening?!",
+  placeholder = "Neler oluyor?!",
 }: {
   parentId?: number;
   placeholder?: string;
@@ -112,7 +112,7 @@ export function CreatePost({
         setMediaUrls((current) => [...current, ...uploaded].slice(0, 4));
       }
     } catch (error) {
-      alert((error as Error).message || "Media upload failed");
+      alert((error as Error).message || "Medya yüklemesi başarısız oldu");
     } finally {
       setIsUploadingMedia(false);
     }
@@ -208,7 +208,7 @@ export function CreatePost({
       {pollEnabled && (
         <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
           <div className="text-sm font-semibold text-gray-400">
-            Poll options
+            Anket seçenekleri
           </div>
           <div className="space-y-2">
             {pollOptions.map((option, index) => (
@@ -222,7 +222,7 @@ export function CreatePost({
                     ),
                   )
                 }
-                placeholder={`Option ${index + 1}`}
+                placeholder={`Seçenek ${index + 1}`}
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none placeholder:text-gray-500 focus:border-blue-500"
               />
             ))}
@@ -238,7 +238,7 @@ export function CreatePost({
               disabled={pollOptions.length >= 4}
               className="rounded-full border border-white/10 px-3 py-1 text-sm hover:bg-white/10 disabled:opacity-40"
             >
-              Add option
+              Seçenek ekle
             </button>
             <button
               type="button"
@@ -248,10 +248,10 @@ export function CreatePost({
               }}
               className="rounded-full border border-white/10 px-3 py-1 text-sm hover:bg-white/10"
             >
-              Remove poll
+              Anketi kaldır
             </button>
           </div>
-          <p className="text-xs text-gray-500">Add at least two options.</p>
+          <p className="text-xs text-gray-500">En az iki seçenek ekleyin.</p>
         </div>
       )}
       <div className="mt-2 flex justify-end">
@@ -265,11 +265,11 @@ export function CreatePost({
           }`}
         >
           <BarChart3 className="h-4 w-4" />
-          {pollEnabled ? "Poll on" : "Add poll"}
+          {pollEnabled ? "Anket açık" : "Anket ekle"}
         </button>
         <label className="mr-auto ml-2 flex cursor-pointer items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/10">
           <ImagePlus className="h-4 w-4" />
-          <span>{isUploadingMedia ? "Uploading..." : "Add media"}</span>
+          <span>{isUploadingMedia ? "Yükleniyor..." : "Medya ekle"}</span>
           <input
             type="file"
             accept="image/*,video/mp4,video/webm,video/quicktime"
@@ -284,7 +284,7 @@ export function CreatePost({
         </label>
         {content.trim().length > 0 && (
           <span className="mr-3 self-center text-sm text-gray-500">
-            Draft saved
+            Taslak kaydedildi
           </span>
         )}
         <button
@@ -299,7 +299,7 @@ export function CreatePost({
           }
           className="rounded-full bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
         >
-          {createPost.isPending ? "Posting..." : "Post"}
+          {createPost.isPending ? "Paylaşılıyor..." : "Paylaş"}
         </button>
       </div>
 
@@ -337,7 +337,7 @@ const getImageAspect = (objectUrl: string): Promise<number> =>
 
     image.onload = () => {
       if (!image.naturalWidth || !image.naturalHeight) {
-        reject(new Error("Failed to read image size"));
+        reject(new Error("Resim boyutu okunamadı"));
         return;
       }
 

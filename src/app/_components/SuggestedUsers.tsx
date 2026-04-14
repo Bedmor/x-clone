@@ -15,7 +15,7 @@ export function SuggestedUsers({ limit = 6 }: { limit?: number }) {
   if (isLoading) {
     return (
       <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-gray-400">
-        Loading people you may know...
+        Tanıyor olabileceğiniz kişiler yükleniyor...
       </div>
     );
   }
@@ -23,7 +23,7 @@ export function SuggestedUsers({ limit = 6 }: { limit?: number }) {
   if (users.length === 0) {
     return (
       <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-gray-400">
-        No recommendations yet.
+        Henüz öneri yok.
       </div>
     );
   }
@@ -32,7 +32,7 @@ export function SuggestedUsers({ limit = 6 }: { limit?: number }) {
     <section className="rounded-3xl border border-white/10 bg-white/5 p-4">
       <div className="mb-4 flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-gray-400 uppercase">
         <Users className="h-4 w-4" />
-        People you may know
+        Tanıyor olabileceğiniz kişiler
       </div>
       <div className="space-y-4">
         {users.map((user) => (
@@ -50,7 +50,7 @@ export function SuggestedUsers({ limit = 6 }: { limit?: number }) {
                 {user.name ?? user.username}
               </Link>
               <div className="truncate text-sm text-gray-400">
-                @{user.username ?? user.id} · {user._count.followedBy} followers
+                @{user.username ?? user.id} · {user._count.followedBy} takipçi
               </div>
             </div>
             <FollowButton

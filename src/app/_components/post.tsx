@@ -19,9 +19,9 @@ export function LatestPost() {
   return (
     <div className="w-full max-w-xs">
       {latestPost ? (
-        <p className="truncate">Your most recent post: {latestPost.content}</p>
+        <p className="truncate">En son gönderiniz: {latestPost.content}</p>
       ) : (
-        <p>You have no posts yet.</p>
+        <p>Henüz gönderiniz yok.</p>
       )}
       <form
         onSubmit={(e) => {
@@ -32,7 +32,7 @@ export function LatestPost() {
       >
         <input
           type="text"
-          placeholder="What's happening?"
+          placeholder="Neler oluyor?"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="w-full rounded-full bg-white/10 px-4 py-2 text-white"
@@ -42,7 +42,7 @@ export function LatestPost() {
           className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
           disabled={createPost.isPending}
         >
-          {createPost.isPending ? "Submitting..." : "Submit"}
+          {createPost.isPending ? "Gönderiliyor..." : "Gönder"}
         </button>
       </form>
     </div>

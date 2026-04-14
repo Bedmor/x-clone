@@ -24,7 +24,9 @@ export function UserListModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-xl border border-white/20 bg-black p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold capitalize">{type}</h2>
+          <h2 className="text-xl font-bold capitalize">
+            {type === "followers" ? "Takipçiler" : "Takip ettikleri"}
+          </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
             ✕
           </button>
@@ -35,7 +37,7 @@ export function UserListModal({
               <Logo className="h-6 w-6 animate-spin text-white" />
             </div>
           ) : users?.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">No users found</div>
+            <div className="p-4 text-center text-gray-500">Kullanıcı bulunamadı</div>
           ) : (
             <div className="flex flex-col gap-4">
               {users?.map((user) => (
