@@ -8,6 +8,7 @@ import { auth } from "~/server/auth";
 import { TRPCReactProvider } from "~/trpc/react";
 import { Sidebar } from "./_components/Sidebar";
 import { BottomNav } from "./_components/BottomNav";
+import { ThemeInitializer } from "./_components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "BetterTwitter",
@@ -33,6 +34,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${schibstedGrotesk.variable}`}>
       <body className="bg-black text-white">
+        <ThemeInitializer />
         <SessionProvider session={session}>
           <TRPCReactProvider>
             <div className="flex h-screen justify-center">

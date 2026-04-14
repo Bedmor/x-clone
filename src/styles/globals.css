@@ -28,3 +28,48 @@
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+html[data-theme="light"] body {
+  background: #f7f7f4;
+  color: #111827;
+}
+
+html[data-theme="light"] .bg-black {
+  background-color: #f7f7f4 !important;
+}
+
+html[data-theme="light"] .bg-black\/50,
+html[data-theme="light"] .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme="light"] .bg-white\/5 {
+  background-color: rgba(17, 24, 39, 0.04) !important;
+}
+
+html[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(17, 24, 39, 0.08) !important;
+}
+
+html[data-theme="light"] .text-white {
+  color: #111827 !important;
+}
+
+html[data-theme="light"] .text-gray-400,
+html[data-theme="light"] .text-gray-500 {
+  color: #4b5563 !important;
+}
+
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/20 {
+  border-color: rgba(17, 24, 39, 0.12) !important;
+}
+
+html[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: rgba(17, 24, 39, 0.04) !important;
+}
+
+html[data-theme="light"] .hover\:bg-white\/10:hover {
+  background-color: rgba(17, 24, 39, 0.08) !important;
+}

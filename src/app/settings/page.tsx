@@ -5,6 +5,9 @@ import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
+import { NotificationPreferences } from "./NotificationPreferences";
+import { ThemeToggle } from "~/app/_components/ThemeToggle";
+import { PrivacySettings } from "./PrivacySettings";
 
 export default function SettingsPage() {
   const [username, setUsername] = useState("");
@@ -39,6 +42,19 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-8 p-4">
+        <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+          <div>
+            <h2 className="text-xl font-bold">Appearance</h2>
+            <p className="text-sm text-gray-400">
+              Switch between light and dark mode.
+            </p>
+          </div>
+          <ThemeToggle />
+        </div>
+
+        <NotificationPreferences />
+        <PrivacySettings />
+
         <div className="space-y-4">
           <h2 className="text-xl font-bold">Change Username</h2>
           <div className="flex flex-col gap-2">

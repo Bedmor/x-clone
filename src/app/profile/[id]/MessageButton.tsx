@@ -4,24 +4,34 @@ import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { api } from "~/trpc/react";
 
-export function MessageButton({ userId }: { userId: string }) {
+export function MessageButton({
+  userId,
+  disabled,
+}: {
+  userId: string;
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const createConversation = api.chat.createConversation.useMutation({
     onSuccess: (conversation) => {
       router.push(`/chat?conversationId=${conversation.id}`);
     },
+    onError: (error) => {
+      alert(error.message);
+    },
   });
 
   const handleMessage = () => {
+    if (disabled) return;
     createConversation.mutate({ participantId: userId });
   };
 
   return (
     <button
       onClick={handleMessage}
-      disabled={createConversation.isPending}
+      disabled={(disabled ?? false) || createConversation.isPending}
       className="rounded-full border border-white/20 p-2 hover:bg-white/10 disabled:opacity-50"
-      title="Message"
+      title={disabled ? "This user is not accepting messages" : "Message"}
     >
       <Mail className="h-5 w-5" />
     </button>

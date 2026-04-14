@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { BarChart3, ImagePlus, X } from "lucide-react";
 import { api } from "~/trpc/react";
+import { uploadToR2 } from "~/app/_lib/uploadToR2";
+import { ImageCropperModal } from "./ImageCropperModal";
 
 export function CreatePost({
   parentId,
@@ -10,8 +15,62 @@ export function CreatePost({
   parentId?: number;
   placeholder?: string;
 }) {
+  const pathname = usePathname();
   const [content, setContent] = useState("");
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [pollEnabled, setPollEnabled] = useState(false);
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropAspect, setCropAspect] = useState(1);
+  const cropResolveRef = useRef<((file: File | null) => void) | null>(null);
+  const cropObjectUrlRef = useRef<string | null>(null);
   const utils = api.useUtils();
+  const draftKey = useMemo(
+    () => `bettertwitter.draft.${pathname}.${parentId ?? "root"}`,
+    [parentId, pathname],
+  );
+
+  useEffect(() => {
+    const storedDraft = window.localStorage.getItem(draftKey);
+    if (storedDraft) {
+      try {
+        const parsed = JSON.parse(storedDraft) as {
+          content?: string;
+          mediaUrls?: string[];
+        };
+        if (typeof parsed.content === "string") {
+          setContent(parsed.content);
+        }
+        if (Array.isArray(parsed.mediaUrls)) {
+          setMediaUrls(parsed.mediaUrls.filter(Boolean).slice(0, 4));
+        }
+      } catch {
+        setContent(storedDraft);
+      }
+    }
+    setIsHydrated(true);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    if (content.trim().length === 0 && mediaUrls.length === 0) {
+      window.localStorage.removeItem(draftKey);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      window.localStorage.setItem(
+        draftKey,
+        JSON.stringify({ content, mediaUrls }),
+      );
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [content, draftKey, isHydrated, mediaUrls]);
+
   const createPost = api.post.create.useMutation({
     onSuccess: async () => {
       await utils.post.getAll.invalidate();
@@ -19,13 +78,81 @@ export function CreatePost({
         await utils.post.getPost.invalidate({ id: parentId });
       }
       setContent("");
+      setPollEnabled(false);
+      setPollOptions(["", ""]);
+      setMediaUrls([]);
+      window.localStorage.removeItem(draftKey);
     },
   });
 
+  const handleMediaUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+
+    const remaining = Math.max(0, 4 - mediaUrls.length);
+    const selectedFiles = Array.from(files).slice(0, remaining);
+    if (selectedFiles.length === 0) return;
+
+    setIsUploadingMedia(true);
+    try {
+      const uploaded: string[] = [];
+
+      for (const file of selectedFiles) {
+        if (file.type.startsWith("video/")) {
+          uploaded.push(await uploadToR2(file));
+          continue;
+        }
+
+        const croppedFile = await cropImageFile(file);
+        if (!croppedFile) continue;
+
+        uploaded.push(await uploadToR2(croppedFile));
+      }
+
+      if (uploaded.length > 0) {
+        setMediaUrls((current) => [...current, ...uploaded].slice(0, 4));
+      }
+    } catch (error) {
+      alert((error as Error).message || "Media upload failed");
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
-    createPost.mutate({ content, parentId });
+    if (!content.trim() && mediaUrls.length === 0) return;
+
+    const sanitizedOptions = pollOptions
+      .map((option) => option.trim())
+      .filter(Boolean);
+    const hasValidPoll = !pollEnabled || sanitizedOptions.length >= 2;
+
+    if (!hasValidPoll) return;
+
+    createPost.mutate({
+      content,
+      mediaUrls,
+      parentId,
+      pollOptions: pollEnabled ? sanitizedOptions : undefined,
+    });
+  };
+
+  const cropImageFile = async (file: File): Promise<File | null> => {
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      const aspect = await getImageAspect(objectUrl);
+
+      return await new Promise<File | null>((resolve) => {
+        cropResolveRef.current = resolve;
+        cropObjectUrlRef.current = objectUrl;
+        setCropAspect(aspect);
+        setCropImageSrc(objectUrl);
+      });
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      throw error;
+    }
   };
 
   return (
@@ -37,15 +164,186 @@ export function CreatePost({
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
+      {mediaUrls.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {mediaUrls.map((url) => {
+            const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url);
+            return (
+              <div
+                key={url}
+                className="relative overflow-hidden rounded-xl border border-white/10"
+              >
+                {isVideo ? (
+                  <video
+                    src={url}
+                    className="h-32 w-full object-cover"
+                    controls
+                  />
+                ) : (
+                  <Image
+                    src={url}
+                    alt="Uploaded media"
+                    width={720}
+                    height={720}
+                    unoptimized
+                    className="h-32 w-full object-cover"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMediaUrls((current) =>
+                      current.filter((item) => item !== url),
+                    )
+                  }
+                  className="absolute top-1 right-1 rounded-full bg-black/70 p-1"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {pollEnabled && (
+        <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+          <div className="text-sm font-semibold text-gray-400">
+            Poll options
+          </div>
+          <div className="space-y-2">
+            {pollOptions.map((option, index) => (
+              <input
+                key={index}
+                value={option}
+                onChange={(event) =>
+                  setPollOptions((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index ? event.target.value : item,
+                    ),
+                  )
+                }
+                placeholder={`Option ${index + 1}`}
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none placeholder:text-gray-500 focus:border-blue-500"
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setPollOptions((current) =>
+                  current.length >= 4 ? current : [...current, ""],
+                )
+              }
+              disabled={pollOptions.length >= 4}
+              className="rounded-full border border-white/10 px-3 py-1 text-sm hover:bg-white/10 disabled:opacity-40"
+            >
+              Add option
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPollEnabled(false);
+                setPollOptions(["", ""]);
+              }}
+              className="rounded-full border border-white/10 px-3 py-1 text-sm hover:bg-white/10"
+            >
+              Remove poll
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">Add at least two options.</p>
+        </div>
+      )}
       <div className="mt-2 flex justify-end">
         <button
+          type="button"
+          onClick={() => setPollEnabled((current) => !current)}
+          className={`mr-auto flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold ${
+            pollEnabled
+              ? "border-blue-500 bg-blue-500/10 text-blue-400"
+              : "border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          {pollEnabled ? "Poll on" : "Add poll"}
+        </button>
+        <label className="mr-auto ml-2 flex cursor-pointer items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/10">
+          <ImagePlus className="h-4 w-4" />
+          <span>{isUploadingMedia ? "Uploading..." : "Add media"}</span>
+          <input
+            type="file"
+            accept="image/*,video/mp4,video/webm,video/quicktime"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              void handleMediaUpload(event.target.files);
+              event.currentTarget.value = "";
+            }}
+            disabled={isUploadingMedia || mediaUrls.length >= 4}
+          />
+        </label>
+        {content.trim().length > 0 && (
+          <span className="mr-3 self-center text-sm text-gray-500">
+            Draft saved
+          </span>
+        )}
+        <button
           type="submit"
-          disabled={createPost.isPending || !content.trim()}
+          disabled={
+            createPost.isPending ||
+            isUploadingMedia ||
+            (!content.trim() && mediaUrls.length === 0) ||
+            (pollEnabled &&
+              pollOptions.map((option) => option.trim()).filter(Boolean)
+                .length < 2)
+          }
           className="rounded-full bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
         >
           {createPost.isPending ? "Posting..." : "Post"}
         </button>
       </div>
+
+      {cropImageSrc && (
+        <ImageCropperModal
+          imageUrl={cropImageSrc}
+          aspect={cropAspect}
+          onCancel={() => {
+            cropResolveRef.current?.(null);
+            cropResolveRef.current = null;
+            if (cropObjectUrlRef.current) {
+              URL.revokeObjectURL(cropObjectUrlRef.current);
+              cropObjectUrlRef.current = null;
+            }
+            setCropImageSrc(null);
+          }}
+          onCropComplete={(file) => {
+            cropResolveRef.current?.(file);
+            cropResolveRef.current = null;
+            if (cropObjectUrlRef.current) {
+              URL.revokeObjectURL(cropObjectUrlRef.current);
+              cropObjectUrlRef.current = null;
+            }
+            setCropImageSrc(null);
+          }}
+        />
+      )}
     </form>
   );
 }
+
+const getImageAspect = (objectUrl: string): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const image = new window.Image();
+
+    image.onload = () => {
+      if (!image.naturalWidth || !image.naturalHeight) {
+        reject(new Error("Failed to read image size"));
+        return;
+      }
+
+      resolve(image.naturalWidth / image.naturalHeight);
+    };
+
+    image.onerror = () => reject(new Error("Failed to load image"));
+    image.src = objectUrl;
+  });

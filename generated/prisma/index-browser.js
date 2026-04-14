@@ -124,6 +124,7 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
 exports.Prisma.PostScalarFieldEnum = {
   id: 'id',
   content: 'content',
+  mediaUrls: 'mediaUrls',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   createdById: 'createdById',
@@ -134,6 +135,32 @@ exports.Prisma.PostScalarFieldEnum = {
 exports.Prisma.LikeScalarFieldEnum = {
   userId: 'userId',
   postId: 'postId'
+};
+
+exports.Prisma.BookmarkScalarFieldEnum = {
+  userId: 'userId',
+  postId: 'postId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.PollScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  postId: 'postId'
+};
+
+exports.Prisma.PollOptionScalarFieldEnum = {
+  id: 'id',
+  text: 'text',
+  createdAt: 'createdAt',
+  pollId: 'pollId'
+};
+
+exports.Prisma.PollVoteScalarFieldEnum = {
+  userId: 'userId',
+  optionId: 'optionId',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.FollowScalarFieldEnum = {
@@ -182,7 +209,20 @@ exports.Prisma.UserScalarFieldEnum = {
   location: 'location',
   website: 'website',
   lastSeen: 'lastSeen',
+  isPrivate: 'isPrivate',
+  messagePermission: 'messagePermission',
   pinnedPostId: 'pinnedPostId'
+};
+
+exports.Prisma.ReportScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  reason: 'reason',
+  details: 'details',
+  targetType: 'targetType',
+  reporterId: 'reporterId',
+  targetUserId: 'targetUserId',
+  targetPostId: 'targetPostId'
 };
 
 exports.Prisma.NotificationScalarFieldEnum = {
@@ -237,16 +277,30 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+exports.MessagePermission = exports.$Enums.MessagePermission = {
+  EVERYONE: 'EVERYONE',
+  FOLLOWING: 'FOLLOWING',
+  NO_ONE: 'NO_ONE'
+};
 
+exports.ReportTargetType = exports.$Enums.ReportTargetType = {
+  USER: 'USER',
+  POST: 'POST'
+};
 
 exports.Prisma.ModelName = {
   Post: 'Post',
   Like: 'Like',
+  Bookmark: 'Bookmark',
+  Poll: 'Poll',
+  PollOption: 'PollOption',
+  PollVote: 'PollVote',
   Follow: 'Follow',
   Block: 'Block',
   Account: 'Account',
   Session: 'Session',
   User: 'User',
+  Report: 'Report',
   Notification: 'Notification',
   VerificationToken: 'VerificationToken',
   Conversation: 'Conversation',

@@ -1,6 +1,5 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
-import { type JWT } from "next-auth/jwt";
 import DiscordProvider from "next-auth/providers/discord";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -28,12 +27,6 @@ declare module "next-auth" {
   //   // ...other properties
   //   // role: UserRole;
   // }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-  }
 }
 
 /**
@@ -114,16 +107,20 @@ export const authConfig = {
   callbacks: {
     jwt: ({ token, user }) => {
       if (user && typeof user.id === "string") {
-        token.id = user.id;
+        token.sub = user.id;
       }
       return token;
     },
-    session: ({ session, token }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: token.id,
-      },
-    }),
+    session: ({ session, token }) => {
+      const userId = typeof token.sub === "string" ? token.sub : "";
+
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: userId,
+        },
+      };
+    },
   },
 } satisfies NextAuthConfig;

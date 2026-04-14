@@ -4,11 +4,12 @@ import {
   Home,
   User,
   Settings,
-  LogOut,
   LogIn,
   UserPlus,
   Bell,
   Mail,
+  Search,
+  Bookmark,
 } from "lucide-react";
 
 export async function BottomNav() {
@@ -22,6 +23,20 @@ export async function BottomNav() {
       >
         <Home className="h-6 w-6" />
       </Link>
+      <Link
+        href="/explore"
+        className="flex flex-col items-center justify-center rounded-full p-2 hover:bg-white/10"
+      >
+        <Search className="h-6 w-6" />
+      </Link>
+      {session && (
+        <Link
+          href="/bookmarks"
+          className="flex flex-col items-center justify-center rounded-full p-2 hover:bg-white/10"
+        >
+          <Bookmark className="h-6 w-6" />
+        </Link>
+      )}
       {session && (
         <>
           <Link

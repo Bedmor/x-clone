@@ -1,6 +1,67 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import Ably from "ably";
+import { TRPCError } from "@trpc/server";
+import type { PrismaClient } from "../../../../generated/prisma";
+
+async function assertCanMessage(
+  db: PrismaClient,
+  senderId: string,
+  recipientId: string,
+) {
+  if (senderId === recipientId) return;
+
+  const [recipient, block] = await Promise.all([
+    db.user.findUnique({
+      where: { id: recipientId },
+      select: { messagePermission: true },
+    }),
+    db.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: senderId, blockedId: recipientId },
+          { blockerId: recipientId, blockedId: senderId },
+        ],
+      },
+    }),
+  ]);
+
+  if (!recipient) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+  }
+
+  if (block) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Messaging is unavailable for this user",
+    });
+  }
+
+  if (recipient.messagePermission === "NO_ONE") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This user is not accepting new messages",
+    });
+  }
+
+  if (recipient.messagePermission === "FOLLOWING") {
+    const followedByRecipient = await db.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: recipientId,
+          followingId: senderId,
+        },
+      },
+    });
+
+    if (!followedByRecipient) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only people this user follows can message them",
+      });
+    }
+  }
+}
 
 export const chatRouter = createTRPCRouter({
   sendMessage: protectedProcedure
@@ -12,6 +73,32 @@ export const chatRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const participant = await ctx.db.conversationParticipant.findUnique({
+        where: {
+          userId_conversationId: {
+            userId: ctx.session.user.id,
+            conversationId: input.conversationId,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!participant) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not allowed" });
+      }
+
+      const recipient = await ctx.db.conversationParticipant.findFirst({
+        where: {
+          conversationId: input.conversationId,
+          userId: { not: ctx.session.user.id },
+        },
+        select: { userId: true },
+      });
+
+      if (recipient) {
+        await assertCanMessage(ctx.db, ctx.session.user.id, recipient.userId);
+      }
+
       const message = await ctx.db.message.create({
         data: {
           content: input.content,
@@ -155,6 +242,15 @@ export const chatRouter = createTRPCRouter({
   createConversation: protectedProcedure
     .input(z.object({ participantId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      if (input.participantId === ctx.session.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot create a conversation with yourself",
+        });
+      }
+
+      await assertCanMessage(ctx.db, ctx.session.user.id, input.participantId);
+
       // Check if conversation already exists
       const existing = await ctx.db.conversation.findFirst({
         where: {

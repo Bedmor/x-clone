@@ -2,23 +2,61 @@
 
 import React, { useState } from "react";
 import { api } from "~/trpc/react";
-import type { RouterOutputs } from "~/trpc/react";
 import Link from "next/link";
+import Image from "next/image";
 import { ReplyModal } from "./ReplyModal";
 import { QuoteModal } from "./QuoteModal";
 import {
   Heart,
+  Bookmark,
+  BookmarkCheck,
   MessageCircle,
   Repeat,
+  Share2,
   Trash2,
   MoreHorizontal,
   Pin,
   PinOff,
+  Flag,
 } from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { useSession } from "next-auth/react";
+import { SharePostModal } from "./SharePostModal";
 
-type PostWithUser = RouterOutputs["post"]["getAll"][number];
+type PollOption = {
+  id: number;
+  text: string;
+  voteCount: number;
+  hasVoted: boolean;
+};
+
+export type PostWithUser = {
+  id: number;
+  content: string | null;
+  mediaUrls?: string[];
+  createdAt: Date | string;
+  parentId: number | null;
+  isLiked: boolean;
+  isBookmarked?: boolean;
+  isReposted?: boolean;
+  isPinned?: boolean;
+  createdBy: {
+    id: string;
+    name: string | null;
+    username: string | null;
+    image: string | null;
+  };
+  _count: {
+    likes: number;
+    replies: number;
+    reposts: number;
+  };
+  poll?: {
+    totalVotes: number;
+    options: PollOption[];
+  } | null;
+  repostOf?: PostWithUser | null;
+};
 
 export const PostItem = React.memo(function PostItem({
   post,
@@ -27,21 +65,29 @@ export const PostItem = React.memo(function PostItem({
 }) {
   const { data: session } = useSession();
   const isSimpleRepost = !!post.repostOf && !post.content;
-  const displayPost: PostWithUser = isSimpleRepost
-    ? (post.repostOf as PostWithUser)
-    : post;
-  const dp = displayPost as unknown as PostWithUser;
+  const dp = isSimpleRepost && post.repostOf ? post.repostOf : post;
+  const dpCount = dp._count ?? { likes: 0, replies: 0, reposts: 0 };
+  const mediaUrls = (dp.mediaUrls ?? []).filter(
+    (url): url is string => typeof url === "string" && url.length > 0,
+  );
 
   const [isReplyOpen, setIsReplyOpen] = useState<boolean>(false);
   const [isQuoteOpen, setIsQuoteOpen] = useState<boolean>(false);
   const [showRepostMenu, setShowRepostMenu] = useState<boolean>(false);
   const [isLiked, setIsLiked] = useState<boolean>(dp.isLiked);
-  const [likesCount, setLikesCount] = useState<number>(dp._count.likes ?? 0);
-  const [isReposted, setIsReposted] = useState<boolean>(dp.isReposted ?? false);
-  const [repostsCount, setRepostsCount] = useState<number>(
-    dp._count.reposts ?? 0,
+  const [likesCount, setLikesCount] = useState<number>(dpCount.likes);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(
+    dp.isBookmarked ?? false,
   );
+  const [isReposted, setIsReposted] = useState<boolean>(dp.isReposted ?? false);
+  const [repostsCount, setRepostsCount] = useState<number>(dpCount.reposts);
   const [showMenu, setShowMenu] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const [selectedOptionId, setSelectedOptionId] = useState<number | null>(
+    dp.poll?.options.find((option: PollOption) => option.hasVoted)?.id ?? null,
+  );
 
   const utils = api.useUtils();
 
@@ -71,11 +117,25 @@ export const PostItem = React.memo(function PostItem({
     },
     onError: () => {
       setIsLiked(dp.isLiked);
-      setLikesCount(dp._count.likes ?? 0);
+      setLikesCount(dpCount.likes);
     },
     onSettled: () => {
       void utils.post.getAll.invalidate();
       void utils.post.getPost.invalidate({ id: dp.id });
+    },
+  });
+
+  const toggleBookmark = api.post.toggleBookmark.useMutation({
+    onMutate: async () => {
+      setIsBookmarked((prev) => !prev);
+    },
+    onError: () => {
+      setIsBookmarked(dp.isBookmarked ?? false);
+    },
+    onSettled: () => {
+      void utils.post.getAll.invalidate();
+      void utils.post.getPost.invalidate({ id: dp.id });
+      void utils.post.getBookmarks.invalidate();
     },
   });
 
@@ -87,11 +147,23 @@ export const PostItem = React.memo(function PostItem({
     },
     onError: () => {
       setIsReposted(dp.isReposted ?? false);
-      setRepostsCount(dp._count.reposts ?? 0);
+      setRepostsCount(dpCount.reposts);
     },
     onSettled: () => {
       void utils.post.getAll.invalidate();
-      void utils.post.getPost.invalidate({ id: displayPost.id });
+      void utils.post.getPost.invalidate({ id: dp.id });
+    },
+  });
+
+  const votePoll = api.post.votePoll.useMutation({
+    onMutate: async ({ optionId }) => {
+      setSelectedOptionId(optionId);
+    },
+    onSettled: () => {
+      void utils.post.getAll.invalidate();
+      void utils.post.getPost.invalidate({ id: dp.id });
+      void utils.user.getProfile.invalidate();
+      void utils.post.getBookmarks.invalidate();
     },
   });
 
@@ -105,6 +177,100 @@ export const PostItem = React.memo(function PostItem({
       // For now, invalidating queries is sufficient for the feed.
     },
   });
+
+  const handleReportPost = async () => {
+    const reasonInput = window.prompt(
+      "Report reason (SPAM, HARASSMENT, HATE, VIOLENCE, NSFW, MISINFORMATION, OTHER)",
+      "SPAM",
+    );
+    if (!reasonInput) return;
+
+    const reason = reasonInput.trim().toUpperCase();
+    const validReasons = new Set([
+      "SPAM",
+      "HARASSMENT",
+      "HATE",
+      "VIOLENCE",
+      "NSFW",
+      "MISINFORMATION",
+      "OTHER",
+    ]);
+
+    if (!validReasons.has(reason)) {
+      alert("Please use one of the listed reason values.");
+      return;
+    }
+
+    const details = window.prompt("Optional details", "") ?? undefined;
+
+    setIsReporting(true);
+    try {
+      const response = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId: dp.id,
+          reason,
+          details: details?.trim() ? details : undefined,
+        }),
+      });
+
+      const result = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        alert(result.error ?? "Failed to submit report.");
+        return;
+      }
+
+      alert("Thanks, your report was submitted.");
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "Failed to submit report.",
+      );
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}/post/${dp.id}`;
+    await navigator.clipboard.writeText(url);
+    setShowShareMenu(false);
+    alert("Post link copied.");
+  };
+
+  const handleNativeShare = async () => {
+    const url = `${window.location.origin}/post/${dp.id}`;
+    const text = dp.content?.trim() ?? "Check this post";
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Post", text, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert("Share API unavailable, link copied instead.");
+      }
+    } finally {
+      setShowShareMenu(false);
+    }
+  };
+
+  const handleOpenShareTarget = (target: "whatsapp" | "telegram" | "x") => {
+    const url = `${window.location.origin}/post/${dp.id}`;
+    const text = dp.content?.trim() ?? "Check this post";
+    const encodedText = encodeURIComponent(`${text}\n${url}`);
+    const encodedUrl = encodeURIComponent(url);
+
+    const targetUrl =
+      target === "whatsapp"
+        ? `https://wa.me/?text=${encodedText}`
+        : target === "telegram"
+          ? `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
+          : `https://twitter.com/intent/tweet?text=${encodedText}`;
+
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    setShowShareMenu(false);
+  };
 
   return (
     <>
@@ -149,23 +315,113 @@ export const PostItem = React.memo(function PostItem({
               href={`/post/${dp.id}`}
               className="mt-1 block whitespace-pre-wrap"
             >
-              {dp.content?.split(/(@\w+)/g).map((part, i) => {
-                if (part.startsWith("@")) {
-                  const username = part.slice(1);
-                  return (
-                    <Link
-                      key={i}
-                      href={`/profile/${username}`}
-                      className="text-blue-400 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {part}
-                    </Link>
-                  );
-                }
-                return part;
-              })}
+              {dp.content
+                ?.split(/(@\w+|#\w+)/g)
+                .map((part: string, i: number) => {
+                  if (part.startsWith("@")) {
+                    const username = part.slice(1);
+                    return (
+                      <Link
+                        key={i}
+                        href={`/profile/${username}`}
+                        className="text-blue-400 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {part}
+                      </Link>
+                    );
+                  }
+                  if (part.startsWith("#")) {
+                    const tag = part.slice(1);
+                    return (
+                      <Link
+                        key={i}
+                        href={`/hashtag/${tag}`}
+                        className="text-cyan-400 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {part}
+                      </Link>
+                    );
+                  }
+                  return part;
+                })}
             </Link>
+
+            {mediaUrls.length > 0 && (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {mediaUrls.map((url: string) => {
+                  const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url);
+                  return (
+                    <div
+                      key={url}
+                      className="overflow-hidden rounded-xl border border-white/20"
+                    >
+                      {isVideo ? (
+                        <video
+                          src={url}
+                          className="h-56 w-full object-cover"
+                          controls
+                        />
+                      ) : (
+                        <Image
+                          src={url}
+                          alt="Post media"
+                          width={1024}
+                          height={1024}
+                          unoptimized
+                          className="h-56 w-full object-cover"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {dp.poll && (
+              <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="text-sm font-semibold text-gray-400">Poll</div>
+                <div className="space-y-2">
+                  {dp.poll.options.map((option: PollOption) => {
+                    const isSelected = selectedOptionId === option.id;
+                    const totalVotes = dp.poll?.totalVotes ?? 0;
+                    const percentage =
+                      totalVotes > 0
+                        ? Math.round((option.voteCount / totalVotes) * 100)
+                        : 0;
+
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => votePoll.mutate({ optionId: option.id })}
+                        className={`w-full overflow-hidden rounded-xl border px-3 py-2 text-left transition ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-500/10"
+                            : "border-white/10 bg-black/20 hover:bg-white/10"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium">{option.text}</span>
+                          <span className="text-sm text-gray-400">
+                            {percentage}%
+                          </span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-blue-500"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {dp.poll.totalVotes} vote{dp.poll.totalVotes === 1 ? "" : "s"}
+                </div>
+              </div>
+            )}
 
             {dp.repostOf && (
               <Link
@@ -196,7 +452,7 @@ export const PostItem = React.memo(function PostItem({
 
             <div className="mt-3 flex gap-4 text-gray-500">
               <button
-                onClick={() => toggleLike.mutate({ postId: displayPost.id })}
+                onClick={() => toggleLike.mutate({ postId: dp.id })}
                 className={`flex items-center gap-1 hover:text-red-500 ${
                   isLiked ? "text-red-500" : ""
                 }`}
@@ -209,8 +465,18 @@ export const PostItem = React.memo(function PostItem({
                 className="flex items-center gap-1 hover:text-blue-500"
               >
                 <MessageCircle />
-                <span>{dp._count.replies}</span>
+                <span>{dpCount.replies}</span>
               </button>
+              {session && (
+                <button
+                  onClick={() => toggleBookmark.mutate({ postId: dp.id })}
+                  className={`flex items-center gap-1 hover:text-yellow-400 ${
+                    isBookmarked ? "text-yellow-400" : ""
+                  }`}
+                >
+                  {isBookmarked ? <BookmarkCheck /> : <Bookmark />}
+                </button>
+              )}
               <div className="relative">
                 <button
                   onClick={() => setShowRepostMenu(!showRepostMenu)}
@@ -250,6 +516,75 @@ export const PostItem = React.memo(function PostItem({
                   </>
                 )}
               </div>
+              <div className="relative">
+                <button
+                  onClick={() => setShowShareMenu((current) => !current)}
+                  className="flex items-center gap-1 hover:text-cyan-400"
+                >
+                  <Share2 />
+                </button>
+                {showShareMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowShareMenu(false)}
+                    />
+                    <div className="absolute top-full right-0 z-20 mt-1 flex w-44 flex-col overflow-hidden rounded-lg border border-white/20 bg-black shadow-xl">
+                      {session && (
+                        <button
+                          onClick={() => {
+                            setIsShareModalOpen(true);
+                            setShowShareMenu(false);
+                          }}
+                          className="px-4 py-2 text-left hover:bg-white/10"
+                        >
+                          Send in DM
+                        </button>
+                      )}
+                      <button
+                        onClick={() => void handleCopyLink()}
+                        className="px-4 py-2 text-left hover:bg-white/10"
+                      >
+                        Copy link
+                      </button>
+                      <button
+                        onClick={() => handleOpenShareTarget("whatsapp")}
+                        className="px-4 py-2 text-left hover:bg-white/10"
+                      >
+                        Share on WhatsApp
+                      </button>
+                      <button
+                        onClick={() => handleOpenShareTarget("telegram")}
+                        className="px-4 py-2 text-left hover:bg-white/10"
+                      >
+                        Share on Telegram
+                      </button>
+                      <button
+                        onClick={() => handleOpenShareTarget("x")}
+                        className="px-4 py-2 text-left hover:bg-white/10"
+                      >
+                        Share on X
+                      </button>
+                      <button
+                        onClick={() => void handleNativeShare()}
+                        className="px-4 py-2 text-left hover:bg-white/10"
+                      >
+                        Other share options
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+              {session && session.user.id !== dp.createdBy.id && (
+                <button
+                  onClick={() => void handleReportPost()}
+                  disabled={isReporting}
+                  className="flex items-center gap-1 hover:text-orange-400 disabled:opacity-50"
+                  title="Report post"
+                >
+                  <Flag />
+                </button>
+              )}
               {session?.user?.id === dp.createdBy.id && (
                 <div className="relative">
                   <button
@@ -312,14 +647,21 @@ export const PostItem = React.memo(function PostItem({
         </div>
       </div>
       <ReplyModal
-        postId={displayPost.id}
+        postId={dp.id}
         isOpen={isReplyOpen}
         onClose={() => setIsReplyOpen(false)}
       />
       <QuoteModal
-        postId={displayPost.id}
+        postId={dp.id}
         isOpen={isQuoteOpen}
         onClose={() => setIsQuoteOpen(false)}
+      />
+      <SharePostModal
+        postId={dp.id}
+        content={dp.content}
+        mediaUrls={dp.mediaUrls}
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
     </>
   );

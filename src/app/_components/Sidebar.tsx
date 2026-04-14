@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { auth } from "~/server/auth";
-import { Home, User, Settings, LogOut, Bell, Mail } from "lucide-react";
+import {
+  Home,
+  User,
+  Settings,
+  LogOut,
+  Bell,
+  Mail,
+  Search,
+  Bookmark,
+} from "lucide-react";
 import { Logo } from "./Logo";
 
 export async function Sidebar() {
@@ -20,6 +29,22 @@ export async function Sidebar() {
           <Home className="h-7 w-7" />
           <span>Home</span>
         </Link>
+        <Link
+          href="/explore"
+          className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+        >
+          <Search className="h-7 w-7" />
+          <span>Explore</span>
+        </Link>
+        {session && (
+          <Link
+            href="/bookmarks"
+            className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+          >
+            <Bookmark className="h-7 w-7" />
+            <span>Bookmarks</span>
+          </Link>
+        )}
         {session && (
           <>
             <Link

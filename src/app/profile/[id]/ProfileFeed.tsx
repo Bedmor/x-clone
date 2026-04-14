@@ -2,14 +2,33 @@
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
-import { PostItem } from "~/app/_components/PostItem";
+import { PostItem, type PostWithUser } from "~/app/_components/PostItem";
 import { PostSkeletonList } from "~/app/_components/PostSkeleton";
 import { type inferRouterOutputs } from "@trpc/server";
 import { type AppRouter } from "~/server/api/root";
 import { Pin } from "lucide-react";
+import {
+  postContainsMutedKeyword,
+  useMutedKeywords,
+} from "~/app/settings/MutedKeywords";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type Post = RouterOutputs["user"]["getPosts"][number];
+
+const isPostWithUser = (value: unknown): value is PostWithUser => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<PostWithUser>;
+  return (
+    typeof candidate.id === "number" &&
+    typeof candidate.createdBy === "object" &&
+    candidate.createdBy !== null &&
+    typeof candidate._count === "object" &&
+    candidate._count !== null
+  );
+};
 
 export function ProfileFeed({
   userId,
@@ -19,6 +38,7 @@ export function ProfileFeed({
   pinnedPost?: Post | null;
 }) {
   const [tab, setTab] = useState<"posts" | "replies" | "likes">("posts");
+  const mutedKeywords = useMutedKeywords();
 
   const postsQuery = api.user.getPosts.useQuery(
     { userId },
@@ -33,12 +53,19 @@ export function ProfileFeed({
     { enabled: tab === "likes" },
   );
 
-  const posts =
+  const posts: Post[] | undefined =
     tab === "posts"
       ? postsQuery.data
       : tab === "replies"
         ? repliesQuery.data
         : likesQuery.data;
+
+  const pinnedPostForRender = isPostWithUser(pinnedPost) ? pinnedPost : null;
+  const filteredPosts = (posts ?? []).filter(isPostWithUser);
+
+  const visiblePosts = filteredPosts.filter(
+    (post) => !postContainsMutedKeyword(post, mutedKeywords),
+  );
 
   const isLoading =
     tab === "posts"
@@ -87,22 +114,22 @@ export function ProfileFeed({
         <PostSkeletonList />
       ) : (
         <>
-          {tab === "posts" && pinnedPost && (
+          {tab === "posts" && pinnedPostForRender && (
             <div className="border-b border-white/20">
               <div className="flex items-center gap-2 px-4 pt-2 text-xs font-bold text-gray-500">
                 <Pin size={12} className="fill-gray-500" />
                 <span>Pinned Post</span>
               </div>
-              <PostItem post={pinnedPost} />
+              <PostItem post={pinnedPostForRender} />
             </div>
           )}
-          {posts?.length === 0 && !pinnedPost ? (
+          {visiblePosts.length === 0 && !pinnedPostForRender ? (
             <div className="p-4 text-center text-gray-500">
               No items to display.
             </div>
           ) : (
-            posts
-              ?.filter((p) => p.id !== pinnedPost?.id)
+            visiblePosts
+              .filter((p) => p.id !== pinnedPostForRender?.id)
               .map((post) => <PostItem key={post.id} post={post} />)
           )}
         </>

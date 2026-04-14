@@ -15,10 +15,10 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { NewChatModal } from "./NewChatModal";
-import { upload } from "@vercel/blob/client";
 import Image from "next/image";
 import { type inferRouterOutputs } from "@trpc/server";
 import { type AppRouter } from "~/server/api/root";
+import { uploadToR2 } from "~/app/_lib/uploadToR2";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
@@ -394,15 +394,12 @@ export default function ChatPage() {
     setIsUploading(true);
 
     try {
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload",
-      });
+      const url = await uploadToR2(file);
 
       await sendMessageMutation.mutateAsync({
         conversationId: selectedConversationId,
         content: "",
-        attachmentUrl: blob.url,
+        attachmentUrl: url,
       });
     } catch (error) {
       console.error("Upload failed:", error);

@@ -5,13 +5,30 @@ import type { RouterOutputs } from "~/trpc/react";
 import { UserAvatar } from "~/app/_components/UserAvatar";
 import Link from "next/link";
 import { Heart, MessageCircle, UserPlus, AtSign } from "lucide-react";
+import { useNotificationPreferences } from "~/app/settings/NotificationPreferences";
 
 type NotificationType = RouterOutputs["notification"]["getAll"][number];
 
 export function NotificationList() {
   const [notifications] = api.notification.getAll.useSuspenseQuery();
+  const prefs = useNotificationPreferences();
 
-  if (!notifications || notifications.length === 0) {
+  const visibleNotifications = notifications.filter((notification) => {
+    switch (notification.type) {
+      case "LIKE":
+        return prefs.likes;
+      case "REPLY":
+        return prefs.replies;
+      case "FOLLOW":
+        return prefs.follows;
+      case "MENTION":
+        return prefs.mentions;
+      default:
+        return true;
+    }
+  });
+
+  if (!visibleNotifications || visibleNotifications.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">No notifications yet</div>
     );
@@ -19,7 +36,7 @@ export function NotificationList() {
 
   return (
     <div className="flex flex-col">
-      {notifications.map((notification: NotificationType) => {
+      {visibleNotifications.map((notification: NotificationType) => {
         let icon = null;
         let text = "";
         let href = "";

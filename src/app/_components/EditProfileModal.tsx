@@ -2,10 +2,10 @@
 
 import { useState, useRef } from "react";
 import { api } from "~/trpc/react";
-import { upload } from "@vercel/blob/client";
 import { Camera } from "lucide-react";
 import Image from "next/image";
 import { ImageCropperModal } from "./ImageCropperModal";
+import { uploadToR2 } from "~/app/_lib/uploadToR2";
 
 export function EditProfileModal({
   user,
@@ -57,19 +57,11 @@ export function EditProfileModal({
       let newHeaderImageUrl = headerImage;
 
       if (croppedAvatarFile) {
-        const blob = await upload(croppedAvatarFile.name, croppedAvatarFile, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
-        });
-        newImageUrl = blob.url;
+        newImageUrl = await uploadToR2(croppedAvatarFile);
       }
 
       if (croppedHeaderFile) {
-        const blob = await upload(croppedHeaderFile.name, croppedHeaderFile, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
-        });
-        newHeaderImageUrl = blob.url;
+        newHeaderImageUrl = await uploadToR2(croppedHeaderFile);
       }
 
       updateProfile.mutate({
@@ -107,7 +99,8 @@ export function EditProfileModal({
                 <Image
                   src={headerImage}
                   alt="Header Preview"
-                  className="h-full w-full object-cover opacity-75"
+                  fill
+                  className="object-cover opacity-75"
                 />
               )}
               <div className="absolute inset-0 flex items-center justify-center">

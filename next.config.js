@@ -12,6 +12,12 @@ const config = {
         remotePatterns: [
             {
                 protocol: "https",
+                hostname:"pub-d09790ae7bd240a1b758ff0f2f35ddcb.r2.dev",
+                pathname: "/**",
+            }
+        ,
+            {
+                protocol: "https",
                 hostname: "cdn.discordapp.com",
                 pathname: "/**",
             },

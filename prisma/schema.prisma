@@ -15,9 +15,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MessagePermission {
+  EVERYONE
+  FOLLOWING
+  NO_ONE
+}
+
+enum ReportTargetType {
+  USER
+  POST
+}
+
 model Post {
   id        Int      @id @default(autoincrement())
   content   String?
+  mediaUrls String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -36,7 +48,10 @@ model Post {
   repostOf      Post?          @relation("PostReposts", fields: [repostOfId], references: [id])
   reposts       Post[]         @relation("PostReposts")
   pinnedBy      User[]         @relation("UserPinnedPost")
+  bookmarks     Bookmark[]
+  poll          Poll?
   notifications Notification[]
+  reports       Report[]
 
   @@index([createdById])
   @@index([createdAt])
@@ -53,6 +68,56 @@ model Like {
   @@id([userId, postId])
   @@index([userId])
   @@index([postId])
+}
+
+model Bookmark {
+  userId    String
+  postId    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+model Poll {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  postId Int  @unique
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  options PollOption[]
+}
+
+model PollOption {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+
+  pollId Int
+  poll   Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  votes PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  userId    String
+  optionId  Int
+  createdAt DateTime @default(now())
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, optionId])
+  @@index([userId])
+  @@index([optionId])
 }
 
 model Follow {
@@ -106,30 +171,37 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  headerImage   String?
-  password      String?
-  username      String?   @unique
-  bio           String?
-  location      String?
-  website       String?
-  lastSeen      DateTime?
-  pinnedPostId  Int?
-  pinnedPost    Post?     @relation("UserPinnedPost", fields: [pinnedPostId], references: [id])
-  accounts      Account[]
-  sessions      Session[]
-  posts         Post[]
-  likes         Like[]
+  id                String            @id @default(cuid())
+  name              String?
+  email             String?           @unique
+  emailVerified     DateTime?
+  image             String?
+  headerImage       String?
+  password          String?
+  username          String?           @unique
+  bio               String?
+  location          String?
+  website           String?
+  lastSeen          DateTime?
+  isPrivate         Boolean           @default(false)
+  messagePermission MessagePermission @default(EVERYONE)
+  pinnedPostId      Int?
+  pinnedPost        Post?             @relation("UserPinnedPost", fields: [pinnedPostId], references: [id])
+  accounts          Account[]
+  sessions          Session[]
+  posts             Post[]
+  likes             Like[]
+  bookmarks         Bookmark[]
+  pollVotes         PollVote[]
 
   followedBy Follow[] @relation("UserFollowedBy")
   following  Follow[] @relation("UserFollows")
 
   blocking  Block[] @relation("UserBlocks")
   blockedBy Block[] @relation("UserBlockedBy")
+
+  reportsFiled    Report[] @relation("ReportReporter")
+  reportsReceived Report[] @relation("ReportTargetUser")
 
   notifications          Notification[] @relation("UserNotifications")
   triggeredNotifications Notification[] @relation("NotificationActor")
@@ -140,6 +212,27 @@ model User {
 
   @@index([username])
   @@index([email])
+}
+
+model Report {
+  id         Int              @id @default(autoincrement())
+  createdAt  DateTime         @default(now())
+  reason     String
+  details    String?
+  targetType ReportTargetType
+
+  reporterId String
+  reporter   User   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  targetUserId String?
+  targetUser   User?   @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  targetPostId Int?
+  targetPost   Post? @relation(fields: [targetPostId], references: [id], onDelete: Cascade)
+
+  @@index([reporterId])
+  @@index([targetUserId])
+  @@index([targetPostId])
 }
 
 model Notification {

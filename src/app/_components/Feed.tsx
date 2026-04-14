@@ -1,39 +1,42 @@
 "use client";
 
-import { useState } from "react";
 import { api } from "~/trpc/react";
-import { PostItem } from "./PostItem";
+import { PostItem, type PostWithUser } from "./PostItem";
+import {
+  postContainsMutedKeyword,
+  useMutedKeywords,
+} from "~/app/settings/MutedKeywords";
 
-export function Feed() {
-  const [tab, setTab] = useState<"for-you" | "following">("for-you");
-  const [posts] = api.post.getAll.useSuspenseQuery({ tab });
+const isPostWithUser = (value: unknown): value is PostWithUser => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<PostWithUser>;
+  return (
+    typeof candidate.id === "number" &&
+    typeof candidate.createdBy === "object" &&
+    candidate.createdBy !== null &&
+    typeof candidate._count === "object" &&
+    candidate._count !== null
+  );
+};
+
+export function Feed({ tab }: { tab: "for-you" | "following" }) {
+  const mutedKeywords = useMutedKeywords();
+  const queryResult = api.post.getAll.useSuspenseQuery({
+    tab,
+  });
+  const rawPosts: unknown = queryResult[0];
+  const posts = Array.isArray(rawPosts) ? rawPosts.filter(isPostWithUser) : [];
+  const visiblePosts = posts.filter(
+    (post) => !postContainsMutedKeyword(post, mutedKeywords),
+  );
 
   return (
     <div className="flex flex-col">
-      <div className="flex border-b border-white/20">
-        <button
-          onClick={() => setTab("for-you")}
-          className={`flex-1 p-4 text-center font-bold transition-colors hover:bg-white/10 ${
-            tab === "for-you"
-              ? "border-b-4 border-blue-500 text-white"
-              : "text-gray-500"
-          }`}
-        >
-          Sana Özel
-        </button>
-        <button
-          onClick={() => setTab("following")}
-          className={`flex-1 p-4 text-center font-bold transition-colors hover:bg-white/10 ${
-            tab === "following"
-              ? "border-b-4 border-blue-500 text-white"
-              : "text-gray-500"
-          }`}
-        >
-          Takip Edilenler
-        </button>
-      </div>
-      {posts.map((post) => (
-        <PostItem key={post.id} post={post} />
+      {visiblePosts.map((post, index) => (
+        <PostItem key={post.id ?? index} post={post} />
       ))}
     </div>
   );

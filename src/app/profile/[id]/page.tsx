@@ -1,4 +1,5 @@
 import { api, HydrateClient } from "~/trpc/server";
+import type { RouterOutputs } from "~/trpc/react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { UserAvatar } from "~/app/_components/UserAvatar";
@@ -9,6 +10,7 @@ import { EditProfileButton } from "./EditProfileButton";
 import { ProfileStats } from "./ProfileStats";
 import { MessageButton } from "./MessageButton";
 import { BlockButton } from "./BlockButton";
+import { ReportUserButton } from "./ReportUserButton";
 
 export default async function ProfilePage({
   params,
@@ -17,7 +19,8 @@ export default async function ProfilePage({
 }) {
   const { id } = await params;
   const session = await auth();
-  const user = await api.user.getProfile({ userId: id });
+  const user: RouterOutputs["user"]["getProfile"] | null =
+    await api.user.getProfile({ userId: id });
 
   if (!user) {
     notFound();
@@ -55,7 +58,8 @@ export default async function ProfilePage({
             ) : (
               session && (
                 <div className="flex gap-2">
-                  <MessageButton userId={user.id} />
+                  <MessageButton userId={user.id} disabled={!user.canMessage} />
+                  <ReportUserButton userId={user.id} />
                   <BlockButton
                     userId={user.id}
                     initialIsBlocked={user.isBlocked}
@@ -95,6 +99,10 @@ export default async function ProfilePage({
             {user.isBlocked
               ? "Bu kullanıcıyı engellediniz."
               : "Bu kullanıcı sizi engelledi."}
+          </div>
+        ) : !user.canViewPosts ? (
+          <div className="p-8 text-center text-gray-500">
+            This account is private. Follow to see posts.
           </div>
         ) : (
           <ProfileFeed userId={user.id} pinnedPost={user.pinnedPost} />

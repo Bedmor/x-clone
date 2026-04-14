@@ -1,10 +1,7 @@
 import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
-import { CreatePost } from "./_components/CreatePost";
-import { Feed } from "./_components/Feed";
-import { Suspense } from "react";
-import { PostSkeletonList } from "./_components/PostSkeleton";
 import { Logo } from "./_components/Logo";
+import { HomeTimeline } from "./_components/HomeTimeline";
 
 export default async function Home() {
   const session = await auth();
@@ -20,10 +17,7 @@ export default async function Home() {
             <Logo className="h-6 w-6 text-white" />
           </div>
         </div>
-        {session && <CreatePost />}
-        <Suspense fallback={<PostSkeletonList />}>
-          <Feed />
-        </Suspense>
+        <HomeTimeline isSignedIn={Boolean(session)} />
       </div>
     </HydrateClient>
   );

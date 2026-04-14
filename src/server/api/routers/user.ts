@@ -1,11 +1,141 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import type { PrismaClient } from "../../../../generated/prisma";
 
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+
+const userPreviewInclude = (currentUserId: string | undefined) => ({
+  followedBy: {
+    where: { followerId: currentUserId ?? "" },
+  },
+  _count: {
+    select: { followedBy: true, following: true, posts: true },
+  },
+});
+
+const messagePermissionSchema = z.enum(["EVERYONE", "FOLLOWING", "NO_ONE"]);
+
+async function canViewUserContent(
+  db: PrismaClient,
+  targetUserId: string,
+  viewerId: string | undefined,
+) {
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { isPrivate: true },
+  });
+
+  if (!target) return false;
+  if (!target.isPrivate) return true;
+  if (!viewerId) return false;
+  if (viewerId === targetUserId) return true;
+
+  const follow = await db.follow.findUnique({
+    where: {
+      followerId_followingId: {
+        followerId: viewerId,
+        followingId: targetUserId,
+      },
+    },
+  });
+
+  return Boolean(follow);
+}
+
+const pollInclude = (userId: string | undefined) => ({
+  include: {
+    options: {
+      include: {
+        votes: {
+          where: { userId: userId ?? "" },
+          select: { userId: true },
+        },
+        _count: {
+          select: { votes: true },
+        },
+      },
+      orderBy: { id: "asc" as const },
+    },
+  },
+});
+
+type PollOptionLike = {
+  id: number;
+  text: string;
+  _count: { votes: number };
+  votes: unknown[];
+};
+
+type PollLike = {
+  options: PollOptionLike[];
+};
+
+type MapUserPostCore = {
+  id: number;
+  content: string | null;
+  mediaUrls: string[];
+  createdAt: Date;
+  parentId: number | null;
+  createdBy: {
+    id: string;
+    name: string | null;
+    username: string | null;
+    image: string | null;
+  };
+  _count: {
+    likes: number;
+    replies: number;
+    reposts: number;
+  };
+  likes: unknown[];
+  bookmarks?: unknown[];
+  reposts: unknown[];
+  pinnedBy: unknown[];
+  poll?: PollLike | null;
+};
+
+type MapUserPostInput = MapUserPostCore & {
+  repostOf?: MapUserPostCore | null;
+};
+
+const mapPoll = (poll?: PollLike | null) =>
+  poll
+    ? {
+        ...poll,
+        totalVotes: poll.options.reduce(
+          (count: number, option) => count + option._count.votes,
+          0,
+        ),
+        options: poll.options.map((option) => ({
+          ...option,
+          voteCount: option._count.votes,
+          hasVoted: option.votes.length > 0,
+        })),
+      }
+    : null;
+
+const mapUserPost = <T extends MapUserPostInput>(post: T) => ({
+  ...post,
+  isLiked: post.likes.length > 0,
+  isBookmarked: (post.bookmarks?.length ?? 0) > 0,
+  isReposted: post.reposts.length > 0,
+  isPinned: post.pinnedBy.length > 0,
+  poll: mapPoll(post.poll),
+  repostOf: post.repostOf
+    ? {
+        ...post.repostOf,
+        isLiked: post.repostOf.likes.length > 0,
+        isBookmarked: (post.repostOf.bookmarks?.length ?? 0) > 0,
+        isReposted: post.repostOf.reposts.length > 0,
+        isPinned: post.repostOf.pinnedBy.length > 0,
+        poll: mapPoll(post.repostOf.poll),
+      }
+    : null,
+});
 
 export const userRouter = createTRPCRouter({
   getProfile: publicProcedure
@@ -20,6 +150,9 @@ export const userRouter = createTRPCRouter({
           followedBy: {
             where: { followerId: ctx.session?.user?.id ?? "" },
           },
+          following: {
+            where: { followingId: ctx.session?.user?.id ?? "" },
+          },
           blockedBy: {
             where: { blockerId: ctx.session?.user?.id ?? "" },
           },
@@ -32,6 +165,11 @@ export const userRouter = createTRPCRouter({
               likes: {
                 where: { userId: ctx.session?.user?.id ?? "" },
               },
+              bookmarks: {
+                where: { userId: ctx.session?.user?.id ?? "" },
+                select: { userId: true },
+              },
+              poll: pollInclude(ctx.session?.user?.id),
               reposts: {
                 where: { createdById: ctx.session?.user?.id ?? "" },
               },
@@ -44,6 +182,11 @@ export const userRouter = createTRPCRouter({
                 include: {
                   createdBy: { select: { id: true, name: true, username: true, image: true } },
                   likes: { where: { userId: ctx.session?.user?.id ?? "" } },
+                  bookmarks: {
+                    where: { userId: ctx.session?.user?.id ?? "" },
+                    select: { userId: true },
+                  },
+                  poll: pollInclude(ctx.session?.user?.id),
                   reposts: {
                     where: { createdById: ctx.session?.user?.id ?? "" },
                   },
@@ -70,6 +213,9 @@ export const userRouter = createTRPCRouter({
           followedBy: {
             where: { followerId: ctx.session?.user?.id ?? "" },
           },
+          following: {
+            where: { followingId: ctx.session?.user?.id ?? "" },
+          },
           blockedBy: {
             where: { blockerId: ctx.session?.user?.id ?? "" },
           },
@@ -82,6 +228,11 @@ export const userRouter = createTRPCRouter({
               likes: {
                 where: { userId: ctx.session?.user?.id ?? "" },
               },
+              bookmarks: {
+                where: { userId: ctx.session?.user?.id ?? "" },
+                select: { userId: true },
+              },
+              poll: pollInclude(ctx.session?.user?.id),
               reposts: {
                 where: { createdById: ctx.session?.user?.id ?? "" },
               },
@@ -94,6 +245,11 @@ export const userRouter = createTRPCRouter({
                 include: {
                   createdBy: { select: { id: true, name: true, username: true, image: true } },
                   likes: { where: { userId: ctx.session?.user?.id ?? "" } },
+                  bookmarks: {
+                    where: { userId: ctx.session?.user?.id ?? "" },
+                    select: { userId: true },
+                  },
+                  poll: pollInclude(ctx.session?.user?.id),
                   reposts: {
                     where: { createdById: ctx.session?.user?.id ?? "" },
                   },
@@ -113,30 +269,66 @@ export const userRouter = createTRPCRouter({
 
       if (!user) return null;
 
+      const isOwnProfile = ctx.session?.user?.id === user.id;
+      const isFollowing = user.followedBy.length > 0;
+      const canViewPosts = !user.isPrivate || isOwnProfile || isFollowing;
+      const targetFollowsViewer = user.following.length > 0;
+
+      const canMessage = Boolean(
+        ctx.session?.user?.id &&
+          !isOwnProfile &&
+          user.blockedBy.length === 0 &&
+          user.blocking.length === 0 &&
+          (user.messagePermission === "EVERYONE" ||
+            (user.messagePermission === "FOLLOWING" && targetFollowsViewer)),
+      );
+
       const pinnedPost = user.pinnedPost
-        ? {
-            ...user.pinnedPost,
-            isLiked: user.pinnedPost.likes.length > 0,
-            isReposted: user.pinnedPost.reposts.length > 0,
-            isPinned: user.pinnedPost.pinnedBy.length > 0,
-            repostOf: user.pinnedPost.repostOf
-              ? {
-                  ...user.pinnedPost.repostOf,
-                  isLiked: user.pinnedPost.repostOf.likes.length > 0,
-                  isReposted: user.pinnedPost.repostOf.reposts.length > 0,
-                  isPinned: user.pinnedPost.repostOf.pinnedBy.length > 0,
-                }
-              : null,
-          }
+        ? canViewPosts
+          ? mapUserPost(user.pinnedPost)
+          : null
         : null;
 
       return {
         ...user,
-        isFollowing: user.followedBy.length > 0,
+        isFollowing,
         isBlocked: user.blockedBy.length > 0,
         hasBlocked: user.blocking.length > 0,
+        canViewPosts,
+        canMessage,
         pinnedPost,
       };
+    }),
+
+  getPrivacySettings: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { isPrivate: true, messagePermission: true },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return user;
+  }),
+
+  updatePrivacySettings: protectedProcedure
+    .input(
+      z.object({
+        isPrivate: z.boolean().optional(),
+        messagePermission: messagePermissionSchema.optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.user.update({
+        where: { id: ctx.session.user.id },
+        data: {
+          isPrivate: input.isPrivate,
+          messagePermission: input.messagePermission,
+        },
+        select: { isPrivate: true, messagePermission: true },
+      });
     }),
 
   register: publicProcedure
@@ -199,7 +391,7 @@ export const userRouter = createTRPCRouter({
     });
   }),
 
-  searchUsers: protectedProcedure
+  searchUsers: publicProcedure
     .input(z.object({ query: z.string() }))
     .query(async ({ ctx, input }) => {
       if (!input.query) return [];
@@ -214,9 +406,84 @@ export const userRouter = createTRPCRouter({
       });
     }),
 
+  getSuggestedUsers: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(20).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const currentUserId = ctx.session.user.id;
+      const limit = input?.limit ?? 6;
+
+      const blockedUsers = await ctx.db.block.findMany({
+        where: {
+          OR: [{ blockerId: currentUserId }, { blockedId: currentUserId }],
+        },
+      });
+
+      const blockedUserIds = blockedUsers.map((block) =>
+        block.blockerId === currentUserId ? block.blockedId : block.blockerId,
+      );
+
+      const following = await ctx.db.follow.findMany({
+        where: { followerId: currentUserId },
+        select: { followingId: true },
+      });
+      const followingIds = following.map((item) => item.followingId);
+
+      const candidateRelations = await ctx.db.follow.findMany({
+        where: {
+          followerId: { in: followingIds },
+          followingId: {
+            notIn: [currentUserId, ...followingIds, ...blockedUserIds],
+          },
+        },
+        select: { followingId: true },
+      });
+
+      const candidateIds = Array.from(
+        new Set(candidateRelations.map((relation) => relation.followingId)),
+      );
+
+      const suggestedUsers = candidateIds.length
+        ? await ctx.db.user.findMany({
+            where: {
+              id: { in: candidateIds, notIn: blockedUserIds },
+            },
+            include: userPreviewInclude(currentUserId),
+          })
+        : [];
+
+      const fallbackUsers = await ctx.db.user.findMany({
+        where: {
+          id: { notIn: [currentUserId, ...followingIds, ...blockedUserIds] },
+        },
+        include: userPreviewInclude(currentUserId),
+        take: limit * 2,
+      });
+
+      const merged = [...suggestedUsers, ...fallbackUsers].filter(
+        (user, index, array) => array.findIndex((item) => item.id === user.id) === index,
+      );
+
+      return merged
+        .map((user) => ({
+          ...user,
+          score: (candidateIds.includes(user.id) ? 10 : 0) + user._count.followedBy + user._count.posts,
+          isFollowing: user.followedBy.length > 0,
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map(({ score: _score, ...user }) => user);
+    }),
+
   getPosts: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const canView = await canViewUserContent(
+        ctx.db,
+        input.userId,
+        ctx.session?.user?.id,
+      );
+      if (!canView) return [];
+
       const posts = await ctx.db.post.findMany({
         take: 50,
         where: { createdById: input.userId, parentId: null },
@@ -226,6 +493,11 @@ export const userRouter = createTRPCRouter({
           likes: {
             where: { userId: ctx.session?.user?.id ?? "" },
           },
+          bookmarks: {
+            where: { userId: ctx.session?.user?.id ?? "" },
+            select: { userId: true },
+          },
+          poll: pollInclude(ctx.session?.user?.id),
           reposts: {
             where: { createdById: ctx.session?.user?.id ?? "" },
           },
@@ -237,6 +509,11 @@ export const userRouter = createTRPCRouter({
             include: {
               createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: { where: { userId: ctx.session?.user?.id ?? "" } },
+              bookmarks: {
+                where: { userId: ctx.session?.user?.id ?? "" },
+                select: { userId: true },
+              },
+              poll: pollInclude(ctx.session?.user?.id),
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
               pinnedBy: {
                 where: { id: ctx.session?.user?.id ?? "" },
@@ -251,25 +528,19 @@ export const userRouter = createTRPCRouter({
         },
       });
 
-      return posts.map((post) => ({
-        ...post,
-        isLiked: post.likes.length > 0,
-        isReposted: post.reposts.length > 0,
-        isPinned: post.pinnedBy.length > 0,
-        repostOf: post.repostOf
-          ? {
-              ...post.repostOf,
-              isLiked: post.repostOf.likes.length > 0,
-              isReposted: post.repostOf.reposts.length > 0,
-              isPinned: post.repostOf.pinnedBy.length > 0,
-            }
-          : null,
-      }));
+      return posts.map((post) => mapUserPost(post));
     }),
 
   getReplies: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const canView = await canViewUserContent(
+        ctx.db,
+        input.userId,
+        ctx.session?.user?.id,
+      );
+      if (!canView) return [];
+
       const posts = await ctx.db.post.findMany({
         take: 50,
         where: { createdById: input.userId, parentId: { not: null } },
@@ -279,6 +550,11 @@ export const userRouter = createTRPCRouter({
           likes: {
             where: { userId: ctx.session?.user?.id ?? "" },
           },
+          bookmarks: {
+            where: { userId: ctx.session?.user?.id ?? "" },
+            select: { userId: true },
+          },
+          poll: pollInclude(ctx.session?.user?.id),
           reposts: {
             where: { createdById: ctx.session?.user?.id ?? "" },
           },
@@ -290,6 +566,11 @@ export const userRouter = createTRPCRouter({
             include: {
               createdBy: { select: { id: true, name: true, username: true, image: true } },
               likes: { where: { userId: ctx.session?.user?.id ?? "" } },
+              bookmarks: {
+                where: { userId: ctx.session?.user?.id ?? "" },
+                select: { userId: true },
+              },
+              poll: pollInclude(ctx.session?.user?.id),
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
               pinnedBy: {
                 where: { id: ctx.session?.user?.id ?? "" },
@@ -304,25 +585,19 @@ export const userRouter = createTRPCRouter({
         },
       });
 
-      return posts.map((post) => ({
-        ...post,
-        isLiked: post.likes.length > 0,
-        isReposted: post.reposts.length > 0,
-        isPinned: post.pinnedBy.length > 0,
-        repostOf: post.repostOf
-          ? {
-              ...post.repostOf,
-              isLiked: post.repostOf.likes.length > 0,
-              isReposted: post.repostOf.reposts.length > 0,
-              isPinned: post.repostOf.pinnedBy.length > 0,
-            }
-          : null,
-      }));
+      return posts.map((post) => mapUserPost(post));
     }),
 
   getLikes: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const canView = await canViewUserContent(
+        ctx.db,
+        input.userId,
+        ctx.session?.user?.id,
+      );
+      if (!canView) return [];
+
       const likes = await ctx.db.like.findMany({
         take: 50,
         where: { userId: input.userId },
@@ -334,6 +609,11 @@ export const userRouter = createTRPCRouter({
               likes: {
                 where: { userId: ctx.session?.user?.id ?? "" },
               },
+              bookmarks: {
+                where: { userId: ctx.session?.user?.id ?? "" },
+                select: { userId: true },
+              },
+              poll: pollInclude(ctx.session?.user?.id),
               reposts: { where: { createdById: ctx.session?.user?.id ?? "" } },
               pinnedBy: {
                 where: { id: ctx.session?.user?.id ?? "" },
@@ -343,6 +623,11 @@ export const userRouter = createTRPCRouter({
                 include: {
                   createdBy: { select: { id: true, name: true, username: true, image: true } },
                   likes: { where: { userId: ctx.session?.user?.id ?? "" } },
+                  bookmarks: {
+                    where: { userId: ctx.session?.user?.id ?? "" },
+                    select: { userId: true },
+                  },
+                  poll: pollInclude(ctx.session?.user?.id),
                   reposts: {
                     where: { createdById: ctx.session?.user?.id ?? "" },
                   },
@@ -363,20 +648,7 @@ export const userRouter = createTRPCRouter({
         },
       });
 
-      return likes.map((like) => ({
-        ...like.post,
-        isLiked: like.post.likes.length > 0,
-        isReposted: like.post.reposts.length > 0,
-        isPinned: like.post.pinnedBy.length > 0,
-        repostOf: like.post.repostOf
-          ? {
-              ...like.post.repostOf,
-              isLiked: like.post.repostOf.likes.length > 0,
-              isReposted: like.post.repostOf.reposts.length > 0,
-              isPinned: like.post.repostOf.pinnedBy.length > 0,
-            }
-          : null,
-      }));
+      return likes.map((like) => mapUserPost(like.post));
     }),
 
   getFollowers: publicProcedure
