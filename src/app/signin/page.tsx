@@ -44,7 +44,7 @@ export default function SignInPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center">
           <Logo className="mb-4 h-12 w-12 text-white" />
-          <h1 className="text-3xl font-bold">Flowzest'e giriş yap</h1>
+          <h1 className="text-3xl font-bold">Flowzest&apos;e giriş yap</h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
