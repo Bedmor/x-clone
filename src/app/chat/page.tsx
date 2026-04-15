@@ -457,7 +457,7 @@ export default function ChatPage() {
     }
 
     const subscriptions: Array<{
-      channel: Ably.Types.RealtimeChannelCallbacks;
+      channel: ReturnType<Ably.Realtime["channels"]["get"]>;
       handler: (message: Ably.Message) => void;
     }> = [];
 
