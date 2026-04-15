@@ -7,6 +7,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { deleteR2ObjectByUrl } from "~/server/lib/r2";
 
 const userPreviewInclude = (currentUserId: string | undefined) => ({
   followedBy: {
@@ -394,15 +395,24 @@ export const userRouter = createTRPCRouter({
   searchUsers: publicProcedure
     .input(z.object({ query: z.string() }))
     .query(async ({ ctx, input }) => {
-      if (!input.query) return [];
+      const query = input.query.trim();
+
+      if (query.length < 2) return [];
+
       return ctx.db.user.findMany({
         where: {
           OR: [
-            { name: { contains: input.query, mode: "insensitive" } },
-            { username: { contains: input.query, mode: "insensitive" } },
+            { name: { contains: query, mode: "insensitive" } },
+            { username: { contains: query, mode: "insensitive" } },
           ],
         },
-        take: 10,
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          image: true,
+        },
+        take: 8,
       });
     }),
 
@@ -707,7 +717,16 @@ export const userRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.user.update({
+      const currentUser = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { image: true, headerImage: true },
+      });
+
+      if (!currentUser) {
+        throw new Error("User not found");
+      }
+
+      const updatedUser = await ctx.db.user.update({
         where: { id: ctx.session.user.id },
         data: {
           name: input.name,
@@ -718,6 +737,26 @@ export const userRouter = createTRPCRouter({
           headerImage: input.headerImage,
         },
       });
+
+      const profileImageChanged =
+        input.image !== undefined &&
+        input.image !== currentUser.image &&
+        currentUser.image;
+      const headerImageChanged =
+        input.headerImage !== undefined &&
+        input.headerImage !== currentUser.headerImage &&
+        currentUser.headerImage;
+
+      await Promise.allSettled([
+        profileImageChanged
+          ? deleteR2ObjectByUrl(currentUser.image)
+          : Promise.resolve(false),
+        headerImageChanged
+          ? deleteR2ObjectByUrl(currentUser.headerImage)
+          : Promise.resolve(false),
+      ]);
+
+      return updatedUser;
     }),
 
   toggleFollow: protectedProcedure

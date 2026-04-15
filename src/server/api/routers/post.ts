@@ -7,6 +7,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { deleteR2ObjectByUrl } from "~/server/lib/r2";
 
 const postInclude = (userId: string | undefined) => ({
   createdBy: {
@@ -911,8 +912,23 @@ export const postRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.post.delete({
+      const post = await ctx.db.post.findFirst({
         where: { id: input.id, createdById: ctx.session.user.id },
+        select: { mediaUrls: true },
       });
+
+      if (!post) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+      }
+
+      const deletedPost = await ctx.db.post.delete({
+        where: { id: input.id },
+      });
+
+      await Promise.allSettled(
+        post.mediaUrls.map((url) => deleteR2ObjectByUrl(url)),
+      );
+
+      return deletedPost;
     }),
 });

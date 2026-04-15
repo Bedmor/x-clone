@@ -4,6 +4,53 @@ import Ably from "ably";
 import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "../../../../generated/prisma";
 
+const conversationParticipantSelect = {
+  userId: true,
+  role: true,
+  hasSeenLatest: true,
+  user: {
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      image: true,
+      lastSeen: true,
+    },
+  },
+} as const;
+
+const conversationMessageSelect = {
+  id: true,
+  content: true,
+  attachmentUrl: true,
+  isSystem: true,
+  createdAt: true,
+  senderId: true,
+  replyTo: {
+    select: {
+      id: true,
+      content: true,
+      senderId: true,
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+        },
+      },
+    },
+  },
+  sender: {
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      image: true,
+      lastSeen: true,
+    },
+  },
+} as const;
+
 async function assertCanMessage(
   db: PrismaClient,
   senderId: string,
@@ -63,6 +110,62 @@ async function assertCanMessage(
   }
 }
 
+async function getConversationParticipantOrThrow(
+  db: PrismaClient,
+  userId: string,
+  conversationId: string,
+) {
+  const participant = await db.conversationParticipant.findUnique({
+    where: {
+      userId_conversationId: {
+        userId,
+        conversationId,
+      },
+    },
+    select: { id: true, role: true },
+  });
+
+  if (!participant) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not allowed" });
+  }
+
+  return participant;
+}
+
+function ensureOwnerOrAdmin(role: "OWNER" | "ADMIN" | "MEMBER") {
+  if (role !== "OWNER" && role !== "ADMIN") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only group owners/admins can perform this action",
+    });
+  }
+}
+
+function ensureOwner(role: "OWNER" | "ADMIN" | "MEMBER") {
+  if (role !== "OWNER") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only group owner can perform this action",
+    });
+  }
+}
+
+async function createSystemMessage(
+  db: PrismaClient,
+  conversationId: string,
+  senderId: string,
+  content: string,
+) {
+  await db.message.create({
+    data: {
+      conversationId,
+      senderId,
+      content,
+      isSystem: true,
+    },
+  });
+}
+
 export const chatRouter = createTRPCRouter({
   sendMessage: protectedProcedure
     .input(
@@ -70,6 +173,7 @@ export const chatRouter = createTRPCRouter({
         conversationId: z.string(),
         content: z.string(),
         attachmentUrl: z.string().nullable().optional(),
+        replyToId: z.string().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -87,7 +191,7 @@ export const chatRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Not allowed" });
       }
 
-      const recipient = await ctx.db.conversationParticipant.findFirst({
+      const recipients = await ctx.db.conversationParticipant.findMany({
         where: {
           conversationId: input.conversationId,
           userId: { not: ctx.session.user.id },
@@ -95,8 +199,22 @@ export const chatRouter = createTRPCRouter({
         select: { userId: true },
       });
 
-      if (recipient) {
+      for (const recipient of recipients) {
         await assertCanMessage(ctx.db, ctx.session.user.id, recipient.userId);
+      }
+
+      if (input.replyToId) {
+        const replyTarget = await ctx.db.message.findUnique({
+          where: { id: input.replyToId },
+          select: { conversationId: true },
+        });
+
+        if (!replyTarget || replyTarget.conversationId !== input.conversationId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Reply target is invalid",
+          });
+        }
       }
 
       const message = await ctx.db.message.create({
@@ -105,9 +223,40 @@ export const chatRouter = createTRPCRouter({
           attachmentUrl: input.attachmentUrl,
           conversationId: input.conversationId,
           senderId: ctx.session.user.id,
+          replyToId: input.replyToId,
+          isSystem: false,
         },
-        include: {
+        select: {
+          id: true,
+          content: true,
+          attachmentUrl: true,
+          isSystem: true,
+          createdAt: true,
+          senderId: true,
+          conversationId: true,
           sender: true,
+          replyTo: {
+            select: {
+              id: true,
+              content: true,
+              senderId: true,
+              sender: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  image: true,
+                },
+              },
+            },
+          },
+          reactions: {
+            select: {
+              id: true,
+              emoji: true,
+              userId: true,
+            },
+          },
         },
       });
 
@@ -161,17 +310,19 @@ export const chatRouter = createTRPCRouter({
           },
         },
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        updatedAt: true,
         participants: {
-          include: {
-            user: true,
-          },
+          select: conversationParticipantSelect,
         },
         messages: {
           orderBy: {
             createdAt: "desc",
           },
           take: 1,
+          select: conversationMessageSelect,
         },
       },
       orderBy: {
@@ -179,6 +330,41 @@ export const chatRouter = createTRPCRouter({
       },
     });
   }),
+
+  getRecentConversations: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(10).default(5) }).optional())
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 5;
+
+      return ctx.db.conversation.findMany({
+        where: {
+          participants: {
+            some: {
+              userId: ctx.session.user.id,
+            },
+          },
+        },
+        take: limit,
+        select: {
+          id: true,
+          title: true,
+          updatedAt: true,
+          participants: {
+            select: conversationParticipantSelect,
+          },
+          messages: {
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+            select: conversationMessageSelect,
+          },
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      });
+    }),
 
   getMessages: protectedProcedure
     .input(
@@ -201,8 +387,45 @@ export const chatRouter = createTRPCRouter({
         orderBy: {
           createdAt: "desc",
         },
-        include: {
-          sender: true,
+        select: {
+          id: true,
+          content: true,
+          attachmentUrl: true,
+          isSystem: true,
+          createdAt: true,
+          senderId: true,
+          conversationId: true,
+          replyTo: {
+            select: {
+              id: true,
+              content: true,
+              senderId: true,
+              sender: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                  image: true,
+                },
+              },
+            },
+          },
+          reactions: {
+            select: {
+              id: true,
+              emoji: true,
+              userId: true,
+            },
+          },
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true,
+              lastSeen: true,
+            },
+          },
         },
       });
 
@@ -240,52 +463,490 @@ export const chatRouter = createTRPCRouter({
     }),
 
   createConversation: protectedProcedure
-    .input(z.object({ participantId: z.string() }))
+    .input(
+      z.object({
+        participantIds: z.array(z.string()).min(1),
+        title: z.string().trim().max(60).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      if (input.participantId === ctx.session.user.id) {
+      const uniqueParticipantIds = Array.from(
+        new Set(input.participantIds.filter((id) => id !== ctx.session.user.id)),
+      );
+
+      if (uniqueParticipantIds.length === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Cannot create a conversation with yourself",
+          message: "At least one participant is required",
         });
       }
 
-      await assertCanMessage(ctx.db, ctx.session.user.id, input.participantId);
+      for (const participantId of uniqueParticipantIds) {
+        await assertCanMessage(ctx.db, ctx.session.user.id, participantId);
+      }
 
-      // Check if conversation already exists
-      const existing = await ctx.db.conversation.findFirst({
-        where: {
-          AND: [
-            {
-              participants: {
-                some: {
-                  userId: ctx.session.user.id,
+      if (uniqueParticipantIds.length === 1) {
+        const targetUserId = uniqueParticipantIds[0]!;
+
+        // Check if direct conversation already exists.
+        const existing = await ctx.db.conversation.findFirst({
+          where: {
+            AND: [
+              {
+                participants: {
+                  some: {
+                    userId: ctx.session.user.id,
+                  },
                 },
               },
-            },
-            {
-              participants: {
-                some: {
-                  userId: input.participantId,
+              {
+                participants: {
+                  some: {
+                    userId: targetUserId,
+                  },
                 },
               },
-            },
-          ],
-        },
-      });
+              {
+                participants: {
+                  every: {
+                    userId: { in: [ctx.session.user.id, targetUserId] },
+                  },
+                },
+              },
+            ],
+          },
+          select: { id: true },
+        });
 
-      if (existing) {
-        return existing;
+        if (existing) {
+          return existing;
+        }
       }
 
       return ctx.db.conversation.create({
         data: {
+          title: uniqueParticipantIds.length > 1 ? input.title ?? null : null,
           participants: {
             create: [
-              { userId: ctx.session.user.id },
-              { userId: input.participantId },
+              { userId: ctx.session.user.id, role: "OWNER" },
+              ...uniqueParticipantIds.map((userId) => ({
+                userId,
+                role: "MEMBER" as const,
+              })),
             ],
           },
         },
+        select: { id: true, title: true },
       });
+    }),
+
+  updateConversationTitle: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        title: z.string().trim().max(60),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const participant = await getConversationParticipantOrThrow(
+        ctx.db,
+        ctx.session.user.id,
+        input.conversationId,
+      );
+      ensureOwnerOrAdmin(participant.role);
+
+      const cleanedTitle = input.title.trim();
+
+      const conversation = await ctx.db.conversation.findUnique({
+        where: { id: input.conversationId },
+        select: { title: true },
+      });
+
+      await ctx.db.conversation.update({
+        where: { id: input.conversationId },
+        data: {
+          title: cleanedTitle.length > 0 ? cleanedTitle : null,
+        },
+      });
+
+      if (conversation?.title !== (cleanedTitle.length > 0 ? cleanedTitle : null)) {
+        const actor = await ctx.db.user.findUnique({
+          where: { id: ctx.session.user.id },
+          select: { name: true, username: true },
+        });
+
+        await createSystemMessage(
+          ctx.db,
+          input.conversationId,
+          ctx.session.user.id,
+          `${actor?.name ?? actor?.username ?? "Kullanıcı"} grup adını güncelledi.`,
+        );
+      }
+
+      return { success: true };
+    }),
+
+  addParticipants: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        participantIds: z.array(z.string()).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const participant = await getConversationParticipantOrThrow(
+        ctx.db,
+        ctx.session.user.id,
+        input.conversationId,
+      );
+      ensureOwnerOrAdmin(participant.role);
+
+      const existingParticipants = await ctx.db.conversationParticipant.findMany({
+        where: { conversationId: input.conversationId },
+        select: { userId: true },
+      });
+
+      const existingIds = new Set(existingParticipants.map((item) => item.userId));
+
+      const uniqueNewIds = Array.from(
+        new Set(
+          input.participantIds.filter(
+            (id) => id !== ctx.session.user.id && !existingIds.has(id),
+          ),
+        ),
+      );
+
+      if (uniqueNewIds.length === 0) {
+        return { success: true, added: 0 };
+      }
+
+      for (const participantId of uniqueNewIds) {
+        await assertCanMessage(ctx.db, ctx.session.user.id, participantId);
+      }
+
+      await ctx.db.conversationParticipant.createMany({
+        data: uniqueNewIds.map((userId) => ({
+          userId,
+          conversationId: input.conversationId,
+          role: "MEMBER",
+        })),
+        skipDuplicates: true,
+      });
+
+      const actor = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { name: true, username: true },
+      });
+      const addedUsers = await ctx.db.user.findMany({
+        where: { id: { in: uniqueNewIds } },
+        select: { name: true, username: true },
+      });
+
+      await createSystemMessage(
+        ctx.db,
+        input.conversationId,
+        ctx.session.user.id,
+        `${actor?.name ?? actor?.username ?? "Kullanıcı"} katılımcı ekledi: ${addedUsers
+          .map((user) => user.name ?? user.username ?? "kullanıcı")
+          .join(", ")}.`,
+      );
+
+      return { success: true, added: uniqueNewIds.length };
+    }),
+
+  removeParticipant: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        userId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const participant = await getConversationParticipantOrThrow(
+        ctx.db,
+        ctx.session.user.id,
+        input.conversationId,
+      );
+      ensureOwner(participant.role);
+
+      const participants = await ctx.db.conversationParticipant.findMany({
+        where: { conversationId: input.conversationId },
+        select: { userId: true, role: true },
+      });
+
+      const participantCount = participants.length;
+      const isRemovingSelf = input.userId === ctx.session.user.id;
+      const targetParticipant = participants.find(
+        (item) => item.userId === input.userId,
+      );
+
+      if (!targetParticipant) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Participant not found" });
+      }
+
+      if (targetParticipant.role === "OWNER") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Owner cannot be removed",
+        });
+      }
+
+      if (!isRemovingSelf && participantCount <= 2) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot remove users from a direct conversation",
+        });
+      }
+
+      await ctx.db.conversationParticipant.delete({
+        where: {
+          userId_conversationId: {
+            userId: input.userId,
+            conversationId: input.conversationId,
+          },
+        },
+      });
+
+      const actor = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { name: true, username: true },
+      });
+      const removed = await ctx.db.user.findUnique({
+        where: { id: input.userId },
+        select: { name: true, username: true },
+      });
+
+      await createSystemMessage(
+        ctx.db,
+        input.conversationId,
+        ctx.session.user.id,
+        `${actor?.name ?? actor?.username ?? "Kullanıcı"} ${removed?.name ?? removed?.username ?? "bir kullanıcıyı"} gruptan çıkardı.`,
+      );
+
+      return { success: true };
+    }),
+
+  leaveConversation: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const participant = await getConversationParticipantOrThrow(
+        ctx.db,
+        ctx.session.user.id,
+        input.conversationId,
+      );
+
+      const allParticipants = await ctx.db.conversationParticipant.findMany({
+        where: { conversationId: input.conversationId },
+        select: { userId: true, role: true },
+      });
+
+      const remaining = allParticipants.filter(
+        (item) => item.userId !== ctx.session.user.id,
+      );
+
+      await ctx.db.conversationParticipant.delete({
+        where: {
+          userId_conversationId: {
+            userId: ctx.session.user.id,
+            conversationId: input.conversationId,
+          },
+        },
+      });
+
+      if (participant.role === "OWNER" && remaining.length > 0) {
+        const promoteTarget =
+          remaining.find((item) => item.role === "ADMIN") ?? remaining[0];
+
+        if (promoteTarget) {
+          await ctx.db.conversationParticipant.update({
+            where: {
+              userId_conversationId: {
+                userId: promoteTarget.userId,
+                conversationId: input.conversationId,
+              },
+            },
+            data: { role: "OWNER" },
+          });
+        }
+      }
+
+      const actor = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { name: true, username: true },
+      });
+
+      await createSystemMessage(
+        ctx.db,
+        input.conversationId,
+        ctx.session.user.id,
+        `${actor?.name ?? actor?.username ?? "Kullanıcı"} gruptan ayrıldı.`,
+      );
+
+      return { success: true };
+    }),
+
+  deleteConversation: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const participant = await getConversationParticipantOrThrow(
+        ctx.db,
+        ctx.session.user.id,
+        input.conversationId,
+      );
+      ensureOwner(participant.role);
+
+      const participantCount = await ctx.db.conversationParticipant.count({
+        where: { conversationId: input.conversationId },
+      });
+
+      if (participantCount <= 2) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Direct conversations cannot be deleted as a group",
+        });
+      }
+
+      await ctx.db.conversation.delete({
+        where: { id: input.conversationId },
+      });
+
+      return { success: true };
+    }),
+
+  setParticipantRole: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        userId: z.string(),
+        role: z.enum(["ADMIN", "MEMBER"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const participant = await getConversationParticipantOrThrow(
+        ctx.db,
+        ctx.session.user.id,
+        input.conversationId,
+      );
+      ensureOwner(participant.role);
+
+      if (input.userId === ctx.session.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Owner role cannot be changed",
+        });
+      }
+
+      const target = await ctx.db.conversationParticipant.findUnique({
+        where: {
+          userId_conversationId: {
+            userId: input.userId,
+            conversationId: input.conversationId,
+          },
+        },
+        select: { role: true },
+      });
+
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Participant not found" });
+      }
+
+      if (target.role === input.role) {
+        return { success: true };
+      }
+
+      await ctx.db.conversationParticipant.update({
+        where: {
+          userId_conversationId: {
+            userId: input.userId,
+            conversationId: input.conversationId,
+          },
+        },
+        data: { role: input.role },
+      });
+
+      const actor = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { name: true, username: true },
+      });
+      const targetUser = await ctx.db.user.findUnique({
+        where: { id: input.userId },
+        select: { name: true, username: true },
+      });
+
+      await createSystemMessage(
+        ctx.db,
+        input.conversationId,
+        ctx.session.user.id,
+        `${actor?.name ?? actor?.username ?? "Kullanıcı"} ${targetUser?.name ?? targetUser?.username ?? "kullanıcı"} rolünü ${input.role === "ADMIN" ? "admin" : "üye"} olarak güncelledi.`,
+      );
+
+      return { success: true };
+    }),
+
+  toggleReaction: protectedProcedure
+    .input(
+      z.object({
+        messageId: z.string(),
+        emoji: z.string().trim().min(1).max(16),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const message = await ctx.db.message.findUnique({
+        where: { id: input.messageId },
+        select: { id: true, conversationId: true },
+      });
+
+      if (!message) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Message not found" });
+      }
+
+      const participant = await ctx.db.conversationParticipant.findUnique({
+        where: {
+          userId_conversationId: {
+            userId: ctx.session.user.id,
+            conversationId: message.conversationId,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!participant) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not allowed" });
+      }
+
+      const existing = await ctx.db.messageReaction.findUnique({
+        where: {
+          messageId_userId_emoji: {
+            messageId: input.messageId,
+            userId: ctx.session.user.id,
+            emoji: input.emoji,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (existing) {
+        await ctx.db.messageReaction.delete({ where: { id: existing.id } });
+      } else {
+        await ctx.db.messageReaction.create({
+          data: {
+            messageId: input.messageId,
+            userId: ctx.session.user.id,
+            emoji: input.emoji,
+          },
+        });
+      }
+
+      if (process.env.ABLY_API_KEY) {
+        const ably = new Ably.Rest(process.env.ABLY_API_KEY);
+        const channel = ably.channels.get(`conversation-${message.conversationId}`);
+        await channel.publish("reaction_update", {
+          messageId: input.messageId,
+          emoji: input.emoji,
+          userId: ctx.session.user.id,
+        });
+      }
+
+      return { success: true };
     }),
 });

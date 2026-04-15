@@ -26,6 +26,12 @@ enum ReportTargetType {
   POST
 }
 
+enum ConversationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
 model Post {
   id        Int      @id @default(autoincrement())
   content   String?
@@ -207,8 +213,9 @@ model User {
   triggeredNotifications Notification[] @relation("NotificationActor")
 
   // Chat relations
-  messages      Message[]
-  conversations ConversationParticipant[]
+  messages         Message[]
+  conversations    ConversationParticipant[]
+  messageReactions MessageReaction[]
 
   @@index([username])
   @@index([email])
@@ -263,6 +270,7 @@ model VerificationToken {
 
 model Conversation {
   id        String   @id @default(cuid())
+  title     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -271,12 +279,13 @@ model Conversation {
 }
 
 model ConversationParticipant {
-  id             String       @id @default(cuid())
+  id             String           @id @default(cuid())
   userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  hasSeenLatest  Boolean      @default(false)
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ConversationRole @default(MEMBER)
+  hasSeenLatest  Boolean          @default(false)
 
   @@unique([userId, conversationId])
 }
@@ -285,11 +294,36 @@ model Message {
   id            String   @id @default(cuid())
   content       String
   attachmentUrl String?
+  isSystem      Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   senderId String
   sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[] @relation("MessageReplies")
+
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  reactions MessageReaction[]
+
+  @@index([conversationId, createdAt])
+  @@index([replyToId])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  emoji     String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }

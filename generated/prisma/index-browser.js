@@ -243,6 +243,7 @@ exports.Prisma.VerificationTokenScalarFieldEnum = {
 
 exports.Prisma.ConversationScalarFieldEnum = {
   id: 'id',
+  title: 'title',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -251,6 +252,7 @@ exports.Prisma.ConversationParticipantScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   conversationId: 'conversationId',
+  role: 'role',
   hasSeenLatest: 'hasSeenLatest'
 };
 
@@ -258,9 +260,19 @@ exports.Prisma.MessageScalarFieldEnum = {
   id: 'id',
   content: 'content',
   attachmentUrl: 'attachmentUrl',
+  isSystem: 'isSystem',
   createdAt: 'createdAt',
   senderId: 'senderId',
+  replyToId: 'replyToId',
   conversationId: 'conversationId'
+};
+
+exports.Prisma.MessageReactionScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  emoji: 'emoji',
+  userId: 'userId',
+  messageId: 'messageId'
 };
 
 exports.Prisma.SortOrder = {
@@ -288,6 +300,12 @@ exports.ReportTargetType = exports.$Enums.ReportTargetType = {
   POST: 'POST'
 };
 
+exports.ConversationRole = exports.$Enums.ConversationRole = {
+  OWNER: 'OWNER',
+  ADMIN: 'ADMIN',
+  MEMBER: 'MEMBER'
+};
+
 exports.Prisma.ModelName = {
   Post: 'Post',
   Like: 'Like',
@@ -305,7 +323,8 @@ exports.Prisma.ModelName = {
   VerificationToken: 'VerificationToken',
   Conversation: 'Conversation',
   ConversationParticipant: 'ConversationParticipant',
-  Message: 'Message'
+  Message: 'Message',
+  MessageReaction: 'MessageReaction'
 };
 
 /**

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "~/server/auth";
+import { db } from "~/server/db";
 import {
   Home,
   User,
@@ -10,10 +11,18 @@ import {
   Mail,
   Search,
   Bookmark,
+  Flag,
 } from "lucide-react";
 
 export async function BottomNav() {
   const session = await auth();
+  const adminUser = session?.user?.id
+    ? await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { username: true },
+      })
+    : null;
+  const isAdmin = adminUser?.username === "acabesim";
 
   return (
     <div className="fixed right-0 bottom-0 left-0 z-50 flex h-16 w-full items-center justify-around border-t border-white/20 bg-black md:hidden">
@@ -35,6 +44,14 @@ export async function BottomNav() {
           className="flex flex-col items-center justify-center rounded-full p-2 hover:bg-white/10"
         >
           <Bookmark className="h-6 w-6" />
+        </Link>
+      )}
+      {isAdmin && (
+        <Link
+          href="/admin/reports"
+          className="flex flex-col items-center justify-center rounded-full p-2 hover:bg-white/10"
+        >
+          <Flag className="h-6 w-6" />
         </Link>
       )}
       {session && (

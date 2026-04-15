@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 
 import { api } from "~/trpc/react";
-import type { RouterOutputs } from "~/trpc/react";
-import { PostItem } from "../_components/PostItem";
+import { PostItem, type PostWithUser } from "../_components/PostItem";
 import {
   postContainsMutedKeyword,
   useMutedKeywords,
@@ -52,13 +51,13 @@ export function ExploreClient() {
   const { data: users = [], isLoading: usersLoading } =
     api.user.searchUsers.useQuery(
       { query: trimmedQuery },
-      { enabled: shouldSearch && showPeople },
+      { enabled: shouldSearch && trimmedQuery.length >= 2 && showPeople },
     );
   const postsQuery = api.post.searchPosts.useQuery(
     { query: trimmedQuery },
     { enabled: shouldSearch && showPosts },
   );
-  const posts: RouterOutputs["post"]["searchPosts"] = postsQuery.data ?? [];
+  const posts = (postsQuery.data ?? []) as unknown as PostWithUser[];
   const postsLoading = postsQuery.isLoading;
   const { data: tags = [], isLoading: tagsLoading } =
     api.post.searchTags.useQuery(
@@ -74,8 +73,8 @@ export function ExploreClient() {
     { limit: 6 },
     { enabled: trimmedQuery.length === 0 },
   );
-  const trendingPosts: RouterOutputs["post"]["getTrendingPosts"] =
-    trendingPostsQuery.data ?? [];
+  const trendingPosts = (trendingPostsQuery.data ??
+    []) as unknown as PostWithUser[];
   const trendingPostsLoading = trendingPostsQuery.isLoading;
   const visibleTrendingPosts = trendingPosts.filter(
     (post) => !postContainsMutedKeyword(post, mutedKeywords),

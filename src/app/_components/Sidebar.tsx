@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "~/server/auth";
+import { isAdminSession } from "~/server/auth/admin";
 import {
   Home,
   User,
@@ -9,11 +10,13 @@ import {
   Mail,
   Search,
   Bookmark,
+  Flag,
 } from "lucide-react";
 import { Logo } from "./Logo";
 
 export async function Sidebar() {
   const session = await auth();
+  const isAdmin = await isAdminSession(session);
 
   return (
     <div className="hidden h-full w-64 flex-col border-r border-white/20 p-4 md:flex">
@@ -54,6 +57,15 @@ export async function Sidebar() {
               <Bell className="h-7 w-7" />
               <span>Bildirimler</span>
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin/reports"
+                className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+              >
+                <Flag className="h-7 w-7" />
+                <span>Raporlar</span>
+              </Link>
+            )}
             <Link
               href="/chat"
               className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"

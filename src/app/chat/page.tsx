@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
@@ -13,17 +14,59 @@ import {
   Image as ImageIcon,
   Loader2,
   ArrowLeft,
+  SmilePlus,
+  Reply,
 } from "lucide-react";
 import { NewChatModal } from "./NewChatModal";
 import Image from "next/image";
 import { type inferRouterOutputs } from "@trpc/server";
 import { type AppRouter } from "~/server/api/root";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
+import { parseSharedPostMessage } from "../_components/shareMessage";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
+type Conversation = RouterOutputs["chat"]["getConversations"][number];
 
 import { Logo } from "../_components/Logo";
+
+const REACTION_OPTIONS = ["👍", "❤️", "😂", "🔥", "👏"] as const;
+
+function getConversationDisplayName(
+  conversation: Conversation | undefined,
+  currentUserId: string,
+) {
+  if (!conversation) {
+    return "Bilinmeyen Sohbet";
+  }
+
+  if (conversation.title?.trim()) {
+    return conversation.title;
+  }
+
+  const others = conversation.participants.filter(
+    (participant) => participant.userId !== currentUserId,
+  );
+
+  if (others.length === 0) {
+    return "Sohbet";
+  }
+
+  if (others.length === 1) {
+    const only = others[0]?.user;
+    return only?.name ?? only?.username ?? "Bilinmeyen Kullanıcı";
+  }
+
+  const names = others
+    .map((participant) => participant.user.name ?? participant.user.username)
+    .filter((name): name is string => Boolean(name));
+
+  if (names.length === 0) {
+    return `${others.length} kişilik grup`;
+  }
+
+  return names.slice(0, 2).join(", ") + (names.length > 2 ? "..." : "");
+}
 
 export default function ChatPage() {
   const { data: session } = useSession();
@@ -35,7 +78,14 @@ export default function ChatPage() {
   >(initialConversationId);
   const [ablyClient, setAblyClient] = useState<Ably.Realtime | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState<
+    string | null
+  >(null);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [showGroupManager, setShowGroupManager] = useState(false);
+  const [groupTitleDraft, setGroupTitleDraft] = useState("");
+  const [memberQuery, setMemberQuery] = useState("");
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // New states
@@ -55,8 +105,19 @@ export default function ChatPage() {
 
   const { data: conversations, refetch: refetchConversations } =
     api.chat.getConversations.useQuery(undefined, {
-      refetchInterval: 5000, // Poll for unread updates
+      staleTime: 30000,
+      refetchOnWindowFocus: true,
     });
+
+  const selectedConversation = conversations?.find(
+    (conversation) => conversation.id === selectedConversationId,
+  );
+  const selectedOtherParticipants = selectedConversation
+    ? selectedConversation.participants.filter(
+        (participant) => participant.userId !== session?.user.id,
+      )
+    : [];
+  const isGroupConversation = selectedOtherParticipants.length > 1;
 
   const createConversation = api.chat.createConversation.useMutation({
     onSuccess: (conversation) => {
@@ -74,8 +135,108 @@ export default function ChatPage() {
 
   const sendMessageMutation = api.chat.sendMessage.useMutation();
 
-  const handleSelectUser = (userId: string) => {
-    createConversation.mutate({ participantId: userId });
+  const updateConversationTitleMutation =
+    api.chat.updateConversationTitle.useMutation({
+      onSuccess: () => {
+        void refetchConversations();
+      },
+    });
+
+  const addParticipantsMutation = api.chat.addParticipants.useMutation({
+    onSuccess: () => {
+      setMemberQuery("");
+      void refetchConversations();
+    },
+  });
+
+  const removeParticipantMutation = api.chat.removeParticipant.useMutation({
+    onSuccess: () => {
+      void refetchConversations();
+    },
+  });
+
+  const leaveConversationMutation = api.chat.leaveConversation.useMutation({
+    onSuccess: () => {
+      setShowGroupManager(false);
+      setSelectedConversationId(null);
+      void refetchConversations();
+    },
+  });
+
+  const deleteConversationMutation = api.chat.deleteConversation.useMutation({
+    onSuccess: () => {
+      setShowGroupManager(false);
+      setSelectedConversationId(null);
+      void refetchConversations();
+    },
+  });
+
+  const setParticipantRoleMutation = api.chat.setParticipantRole.useMutation({
+    onSuccess: () => {
+      void refetchConversations();
+    },
+  });
+
+  const toggleReactionMutation = api.chat.toggleReaction.useMutation({
+    onSuccess: () => {
+      if (!selectedConversationId) {
+        return;
+      }
+
+      void utils.chat.getMessages.invalidate({
+        conversationId: selectedConversationId,
+        limit: 20,
+      });
+    },
+  });
+
+  const myConversationRole = selectedConversation?.participants.find(
+    (participant) => participant.userId === session?.user.id,
+  )?.role;
+  const canManageGroup =
+    myConversationRole === "OWNER" || myConversationRole === "ADMIN";
+  const canManageRoles = myConversationRole === "OWNER";
+  const canDeleteGroup = myConversationRole === "OWNER";
+
+  const handleCreateConversation = (
+    participantIds: string[],
+    title?: string,
+  ) => {
+    createConversation.mutate({ participantIds, title });
+  };
+
+  const { data: memberSearchUsers = [], isLoading: isMemberSearchLoading } =
+    api.user.searchUsers.useQuery(
+      { query: memberQuery.trim() },
+      {
+        enabled:
+          showGroupManager &&
+          !!selectedConversationId &&
+          memberQuery.trim().length >= 2,
+      },
+    );
+
+  const addableUsers = memberSearchUsers.filter(
+    (user) =>
+      user.id !== session?.user.id &&
+      !selectedConversation?.participants.some(
+        (participant) => participant.userId === user.id,
+      ),
+  );
+
+  const handleSetParticipantRole = (
+    userId: string,
+    role: "ADMIN" | "MEMBER",
+  ) => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    setParticipantRoleMutation.mutate({
+      conversationId: selectedConversationId,
+      userId,
+      role,
+    });
   };
 
   // Infinite Query for messages
@@ -106,6 +267,19 @@ export default function ChatPage() {
       markConversationAsRead({ conversationId: selectedConversationId });
     }
   }, [selectedConversationId, markConversationAsRead]);
+
+  useEffect(() => {
+    setReactionPickerMessageId(null);
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (!selectedConversationId || !selectedConversation) {
+      setGroupTitleDraft("");
+      return;
+    }
+
+    setGroupTitleDraft(selectedConversation.title ?? "");
+  }, [selectedConversationId, selectedConversation]);
 
   // Ably connection
   useEffect(() => {
@@ -163,8 +337,7 @@ export default function ChatPage() {
       `conversation-${selectedConversationId}`,
     );
 
-    // Subscribe to new messages
-    void channel.subscribe("new_message", (message) => {
+    const onNewMessage = (message: Ably.Message) => {
       const typedMessage = message.data as unknown as ChatMessage;
 
       // If the message is for the current conversation, mark it as read
@@ -228,10 +401,9 @@ export default function ChatPage() {
       );
       scrollToBottom();
       void refetchConversations();
-    });
+    };
 
-    // Subscribe to typing events
-    void channel.subscribe("typing", (message) => {
+    const onTyping = (message: Ably.Message) => {
       const { userId, isTyping } = message.data as {
         userId: string;
         isTyping: boolean;
@@ -245,10 +417,28 @@ export default function ChatPage() {
         else next.delete(userId);
         return next;
       });
-    });
+    };
+
+    const onReactionUpdate = () => {
+      void utils.chat.getMessages.invalidate({
+        conversationId: selectedConversationId,
+        limit: 20,
+      });
+    };
+
+    // Subscribe to new messages
+    void channel.subscribe("new_message", onNewMessage);
+
+    // Subscribe to typing events
+    void channel.subscribe("typing", onTyping);
+
+    // Subscribe to reaction updates and refresh messages.
+    void channel.subscribe("reaction_update", onReactionUpdate);
 
     return () => {
-      channel.unsubscribe();
+      void channel.unsubscribe("new_message", onNewMessage);
+      void channel.unsubscribe("typing", onTyping);
+      void channel.unsubscribe("reaction_update", onReactionUpdate);
       setTypingUsers(new Set());
     };
   }, [
@@ -259,6 +449,36 @@ export default function ChatPage() {
     markConversationAsRead,
     session?.user.id,
   ]);
+
+  // Keep conversations list live without polling by listening all conversation channels.
+  useEffect(() => {
+    if (!ablyClient || !conversations?.length) {
+      return;
+    }
+
+    const subscriptions: Array<{
+      channel: Ably.Types.RealtimeChannelCallbacks;
+      handler: (message: Ably.Message) => void;
+    }> = [];
+
+    for (const conversation of conversations) {
+      const channel = ablyClient.channels.get(
+        `conversation-${conversation.id}`,
+      );
+      const handler = () => {
+        void utils.chat.getConversations.invalidate();
+      };
+
+      void channel.subscribe("new_message", handler);
+      subscriptions.push({ channel, handler });
+    }
+
+    return () => {
+      for (const item of subscriptions) {
+        void item.channel.unsubscribe("new_message", item.handler);
+      }
+    };
+  }, [ablyClient, conversations, utils]);
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -340,6 +560,15 @@ export default function ChatPage() {
       senderId: String(session.user.id),
       createdAt: new Date(),
       sender: optimisticSender,
+      replyTo: replyingTo
+        ? {
+            id: replyingTo.id,
+            content: replyingTo.content,
+            senderId: replyingTo.senderId,
+            sender: replyingTo.sender,
+          }
+        : null,
+      reactions: [],
     };
 
     utils.chat.getMessages.setInfiniteData(
@@ -380,7 +609,9 @@ export default function ChatPage() {
         conversationId: selectedConversationId,
         content,
         attachmentUrl: null,
+        replyToId: replyingTo?.id ?? null,
       });
+      setReplyingTo(null);
     } catch (error) {
       console.error("Failed to send message", error);
       // Ideally restore message to input on error
@@ -400,6 +631,7 @@ export default function ChatPage() {
         conversationId: selectedConversationId,
         content: "",
         attachmentUrl: url,
+        replyToId: null,
       });
     } catch (error) {
       console.error("Upload failed:", error);
@@ -408,6 +640,78 @@ export default function ChatPage() {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleSaveGroupTitle = () => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    updateConversationTitleMutation.mutate({
+      conversationId: selectedConversationId,
+      title: groupTitleDraft,
+    });
+  };
+
+  const handleAddParticipant = (userId: string) => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    addParticipantsMutation.mutate({
+      conversationId: selectedConversationId,
+      participantIds: [userId],
+    });
+  };
+
+  const handleRemoveParticipant = (userId: string) => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    removeParticipantMutation.mutate({
+      conversationId: selectedConversationId,
+      userId,
+    });
+  };
+
+  const handleLeaveConversation = () => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    leaveConversationMutation.mutate({
+      conversationId: selectedConversationId,
+    });
+  };
+
+  const handleOpenReactionPicker = (messageId: string) => {
+    setReactionPickerMessageId((prev) =>
+      prev === messageId ? null : messageId,
+    );
+  };
+
+  const handleSelectReaction = (messageId: string, emoji: string) => {
+    toggleReactionMutation.mutate({ messageId, emoji });
+    setReactionPickerMessageId(null);
+  };
+
+  const handleDeleteConversation = () => {
+    if (!selectedConversationId || !canDeleteGroup) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Bu grubu kalici olarak kapatmak istiyor musun?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    deleteConversationMutation.mutate({
+      conversationId: selectedConversationId,
+    });
   };
 
   if (!session) {
@@ -433,9 +737,10 @@ export default function ChatPage() {
         </div>
         <div className="h-full overflow-y-auto pb-20">
           {conversations?.map((conversation) => {
-            const otherParticipant = conversation.participants.find(
+            const otherParticipants = conversation.participants.filter(
               (p) => p.userId !== session.user.id,
-            )?.user;
+            );
+            const otherParticipant = otherParticipants[0]?.user;
             const lastMessage = conversation.messages[0];
             const isUnread =
               conversation.participants.find(
@@ -470,7 +775,10 @@ export default function ChatPage() {
                       <span
                         className={`truncate ${isUnread ? "font-bold text-white" : "text-gray-300"}`}
                       >
-                        {otherParticipant?.name ?? "Bilinmeyen Kullanıcı"}
+                        {getConversationDisplayName(
+                          conversation,
+                          session.user.id,
+                        )}
                       </span>
                       {lastMessage && (
                         <span className="text-xs text-gray-500">
@@ -481,11 +789,14 @@ export default function ChatPage() {
                     <p
                       className={`truncate text-sm ${isUnread ? "font-semibold text-white" : "text-gray-500"}`}
                     >
-                      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                      {lastMessage?.content ||
-                        (lastMessage?.attachmentUrl
-                          ? "Bir resim gönderdi"
-                          : "Henüz mesaj yok")}
+                      {lastMessage
+                        ? parseSharedPostMessage(lastMessage.content)
+                          ? "Gönderi paylaşıldı"
+                          : lastMessage.content ||
+                            (lastMessage.attachmentUrl
+                              ? "Bir resim gönderdi"
+                              : "Henüz mesaj yok")
+                        : "Henüz mesaj yok"}
                     </p>
                   </div>
                 </div>
@@ -521,14 +832,16 @@ export default function ChatPage() {
                   const conversation = conversations?.find(
                     (c) => c.id === selectedConversationId,
                   );
-                  const otherParticipant = conversation?.participants.find(
-                    (p) => p.userId !== session.user.id,
-                  )?.user;
+                  const otherParticipants =
+                    conversation?.participants.filter(
+                      (p) => p.userId !== session.user.id,
+                    ) ?? [];
+                  const otherParticipant = otherParticipants[0]?.user;
                   const isOnline =
-                    otherParticipant && onlineUsers.has(otherParticipant.id);
-                  const otherParticipantData = conversation?.participants.find(
-                    (p) => p.userId !== session.user.id,
-                  );
+                    otherParticipants.length === 1 &&
+                    otherParticipant &&
+                    onlineUsers.has(otherParticipant.id);
+                  const otherParticipantData = otherParticipants[0];
 
                   return (
                     <>
@@ -544,9 +857,25 @@ export default function ChatPage() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-bold">
-                          {otherParticipant?.name ?? "Bilinmeyen Kullanıcı"}
+                          {getConversationDisplayName(
+                            conversation,
+                            session.user.id,
+                          )}
                         </span>
-                        {isOnline ? (
+                        {isGroupConversation && (
+                          <button
+                            type="button"
+                            onClick={() => setShowGroupManager(true)}
+                            className="mt-1 w-fit rounded-full border border-white/20 px-2 py-0.5 text-xs text-gray-300 hover:bg-white/10"
+                          >
+                            Grup ayarları
+                          </button>
+                        )}
+                        {otherParticipants.length > 1 ? (
+                          <span className="text-xs text-gray-500">
+                            {otherParticipants.length} katılımcı
+                          </span>
+                        ) : isOnline ? (
                           <span className="text-xs text-green-500">
                             Çevrimiçi
                           </span>
@@ -598,53 +927,205 @@ export default function ChatPage() {
                 <div className="flex flex-col gap-4">
                   {messages.map((message) => {
                     const isMe = message.senderId === session.user.id;
+                    const sharedPost = parseSharedPostMessage(message.content);
+
+                    if (message.isSystem) {
+                      return (
+                        <div key={message.id} className="flex justify-center">
+                          <div className="max-w-[80%] rounded-full border border-white/20 bg-white/5 px-3 py-1 text-center text-xs text-gray-300">
+                            {message.content}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const groupedReactions = message.reactions.reduce(
+                      (acc, reaction) => {
+                        const key = reaction.emoji;
+
+                        if (!acc[key]) {
+                          acc[key] = { count: 0, reactedByMe: false };
+                        }
+
+                        acc[key].count += 1;
+
+                        if (reaction.userId === session.user.id) {
+                          acc[key].reactedByMe = true;
+                        }
+
+                        return acc;
+                      },
+                      {} as Record<
+                        string,
+                        { count: number; reactedByMe: boolean }
+                      >,
+                    );
+
+                    const messageActions = (
+                      <div className="relative flex shrink-0 flex-col gap-1 self-end">
+                        {reactionPickerMessageId === message.id && (
+                          <div
+                            className={`absolute bottom-full z-10 mb-2 flex gap-1 rounded-xl border border-white/20 bg-black p-1 ${
+                              isMe ? "right-0" : "left-0"
+                            }`}
+                          >
+                            {REACTION_OPTIONS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() =>
+                                  handleSelectReaction(message.id, emoji)
+                                }
+                                className="rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-sm hover:bg-white/10"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenReactionPicker(message.id)}
+                          title="Tepki ver"
+                          aria-label="Tepki ver"
+                          className="rounded-full border border-white/20 bg-white/5 p-1.5 hover:bg-white/10"
+                        >
+                          <SmilePlus size={14} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setReplyingTo(message)}
+                          title="Yanıtla"
+                          aria-label="Yanıtla"
+                          className="rounded-full border border-white/20 bg-white/5 p-1.5 hover:bg-white/10"
+                        >
+                          <Reply size={14} />
+                        </button>
+                      </div>
+                    );
+
                     return (
                       <div
                         key={message.id}
-                        className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                        className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
                       >
-                        <div
-                          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                            isMe
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-800 text-white"
-                          }`}
-                        >
-                          {message.attachmentUrl && (
-                            <Image
-                              src={message.attachmentUrl}
-                              alt="Ek"
-                              width={300}
-                              height={200}
-                              className="mb-2 max-h-60 rounded-lg object-cover"
-                            />
-                          )}
-                          {message.content && <p>{message.content}</p>}
-                          <div className="mt-1 flex items-center justify-end gap-1">
-                            <span className="text-xs opacity-70">
-                              {formatDistanceToNow(
-                                new Date(message.createdAt),
-                                {
-                                  addSuffix: true,
-                                },
+                        <div className="flex w-fit items-end gap-2">
+                          {isMe ? messageActions : null}
+                          <div
+                            className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                              isMe
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-800 text-white"
+                            }`}
+                          >
+                            {message.replyTo && (
+                              <div className="mb-2 rounded-xl border border-white/20 bg-black/20 p-2 text-xs text-gray-200">
+                                <div className="font-semibold text-gray-300">
+                                  {message.replyTo.sender.name ??
+                                    message.replyTo.sender.username ??
+                                    "Kullanıcı"}
+                                </div>
+                                <div className="line-clamp-2 text-gray-400">
+                                  {message.replyTo.content || "Mesaj"}
+                                </div>
+                              </div>
+                            )}
+
+                            {sharedPost ? (
+                              <Link
+                                href={`/post/${sharedPost.postId}`}
+                                className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+                              >
+                                <div className="mb-2 text-xs tracking-[0.2em] text-gray-400 uppercase">
+                                  Paylaşılan gönderi
+                                </div>
+                                {sharedPost.content ? (
+                                  <p className="line-clamp-4 text-sm whitespace-pre-wrap text-gray-100">
+                                    {sharedPost.content}
+                                  </p>
+                                ) : (
+                                  <p className="text-sm text-gray-100">
+                                    Medya gönderisi
+                                  </p>
+                                )}
+                                {sharedPost.mediaUrls.length > 0 && (
+                                  <div className="mt-3 grid grid-cols-3 gap-2">
+                                    {sharedPost.mediaUrls
+                                      .slice(0, 3)
+                                      .map((url) => (
+                                        <img
+                                          key={url}
+                                          src={url}
+                                          alt="Paylaşılan gönderi medyası"
+                                          className="h-20 w-full rounded-xl object-cover"
+                                        />
+                                      ))}
+                                  </div>
+                                )}
+                              </Link>
+                            ) : message.attachmentUrl ? (
+                              <Image
+                                src={message.attachmentUrl}
+                                alt="Ek"
+                                width={300}
+                                height={200}
+                                className="mb-2 max-h-60 rounded-lg object-cover"
+                              />
+                            ) : null}
+                            {!sharedPost && message.content && (
+                              <p>{message.content}</p>
+                            )}
+
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {Object.entries(groupedReactions).map(
+                                ([emoji, info]) => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() =>
+                                      handleSelectReaction(message.id, emoji)
+                                    }
+                                    className={`rounded-full border px-2 py-0.5 text-xs ${
+                                      info.reactedByMe
+                                        ? "border-blue-400/60 bg-blue-500/20"
+                                        : "border-white/20 bg-white/5"
+                                    }`}
+                                  >
+                                    {emoji} {info.count}
+                                  </button>
+                                ),
                               )}
-                            </span>
-                            {isMe &&
-                              message.id ===
-                                messages[messages.length - 1]?.id && (
-                                <span className="text-[10px] opacity-70">
-                                  {conversations
-                                    ?.find(
-                                      (c) => c.id === selectedConversationId,
-                                    )
-                                    ?.participants.find(
-                                      (p) => p.userId !== session.user.id,
-                                    )?.hasSeenLatest
-                                    ? " • Görüldü"
-                                    : " • Gönderildi"}
-                                </span>
-                              )}
+                            </div>
+
+                            <div className="mt-1 flex items-center justify-end gap-1">
+                              <span className="text-xs opacity-70">
+                                {formatDistanceToNow(
+                                  new Date(message.createdAt),
+                                  {
+                                    addSuffix: true,
+                                  },
+                                )}
+                              </span>
+                              {isMe &&
+                                message.id ===
+                                  messages[messages.length - 1]?.id && (
+                                  <span className="text-[10px] opacity-70">
+                                    {conversations
+                                      ?.find(
+                                        (c) => c.id === selectedConversationId,
+                                      )
+                                      ?.participants.find(
+                                        (p) => p.userId !== session.user.id,
+                                      )?.hasSeenLatest
+                                      ? " • Görüldü"
+                                      : " • Gönderildi"}
+                                  </span>
+                                )}
+                            </div>
                           </div>
+                          {!isMe ? messageActions : null}
                         </div>
                       </div>
                     );
@@ -667,6 +1148,26 @@ export default function ChatPage() {
               onSubmit={handleSendMessage}
               className="border-t border-white/20 p-4"
             >
+              {replyingTo && (
+                <div className="mb-3 rounded-2xl border border-blue-400/30 bg-blue-500/10 p-3 text-sm">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="font-semibold text-blue-200">
+                      Yanıtlanıyor
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(null)}
+                      className="text-xs text-blue-200/80 hover:text-blue-100"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+                  <div className="line-clamp-2 text-gray-300">
+                    {replyingTo.content || "Mesaj"}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <input
                   type="file"
@@ -717,8 +1218,169 @@ export default function ChatPage() {
       {showNewChatModal && (
         <NewChatModal
           onClose={() => setShowNewChatModal(false)}
-          onSelectUser={handleSelectUser}
+          onCreateConversation={handleCreateConversation}
         />
+      )}
+
+      {showGroupManager && selectedConversation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-white/20 bg-black p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Grup ayarları</h3>
+              <button
+                type="button"
+                onClick={() => setShowGroupManager(false)}
+                className="rounded border border-white/20 px-2 py-1 text-sm hover:bg-white/10"
+              >
+                Kapat
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm text-gray-300">
+                Grup adı
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={groupTitleDraft}
+                  onChange={(event) => setGroupTitleDraft(event.target.value)}
+                  placeholder="Grup adı"
+                  className="flex-1 rounded-xl border border-white/20 bg-black px-3 py-2 text-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveGroupTitle}
+                  className="rounded-xl bg-blue-500 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-600"
+                  disabled={
+                    updateConversationTitleMutation.isPending || !canManageGroup
+                  }
+                >
+                  Kaydet
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm text-gray-300">
+                Katılımcı ekle
+              </label>
+              <input
+                value={memberQuery}
+                onChange={(event) => setMemberQuery(event.target.value)}
+                placeholder="Kullanıcı ara"
+                className="mb-2 w-full rounded-xl border border-white/20 bg-black px-3 py-2 text-white"
+              />
+              <div className="max-h-32 space-y-1 overflow-y-auto">
+                {isMemberSearchLoading ? (
+                  <div className="text-sm text-gray-500">Aranıyor...</div>
+                ) : addableUsers.length > 0 ? (
+                  addableUsers.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => handleAddParticipant(user.id)}
+                      className="flex w-full items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-left hover:bg-white/10"
+                      disabled={
+                        addParticipantsMutation.isPending || !canManageGroup
+                      }
+                    >
+                      <span>
+                        {user.name ?? user.username} @{user.username ?? user.id}
+                      </span>
+                      <span className="text-xs text-gray-400">Ekle</span>
+                    </button>
+                  ))
+                ) : memberQuery.trim().length >= 2 ? (
+                  <div className="text-sm text-gray-500">
+                    Eklenebilecek kullanıcı yok.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm text-gray-300">
+                Katılımcılar
+              </label>
+              <div className="max-h-44 space-y-2 overflow-y-auto">
+                {selectedConversation.participants.map((participant) => {
+                  const isMe = participant.userId === session.user.id;
+                  const isOwner = participant.role === "OWNER";
+                  const isAdmin = participant.role === "ADMIN";
+
+                  return (
+                    <div
+                      key={participant.userId}
+                      className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2"
+                    >
+                      <div className="flex flex-col">
+                        <span>
+                          {participant.user.name ??
+                            participant.user.username ??
+                            "Kullanıcı"}
+                          {isMe ? " (sen)" : ""}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {isOwner ? "owner" : isAdmin ? "admin" : "member"}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {!isMe && canManageRoles && !isOwner && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleSetParticipantRole(
+                                participant.userId,
+                                isAdmin ? "MEMBER" : "ADMIN",
+                              )
+                            }
+                            className="rounded border border-blue-400/40 px-2 py-1 text-xs text-blue-300 hover:bg-blue-500/10"
+                            disabled={setParticipantRoleMutation.isPending}
+                          >
+                            {isAdmin ? "Admin al" : "Admin yap"}
+                          </button>
+                        )}
+
+                        {!isMe && canManageRoles && !isOwner && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRemoveParticipant(participant.userId)
+                            }
+                            className="rounded border border-red-400/40 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
+                            disabled={removeParticipantMutation.isPending}
+                          >
+                            Çıkar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLeaveConversation}
+              disabled={leaveConversationMutation.isPending}
+              className="w-full rounded-xl border border-red-400/40 px-3 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+            >
+              Gruptan ayrıl
+            </button>
+
+            {canDeleteGroup && (
+              <button
+                type="button"
+                onClick={handleDeleteConversation}
+                disabled={deleteConversationMutation.isPending}
+                className="mt-2 w-full rounded-xl border border-red-500/60 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-600/15"
+              >
+                Grubu kapat
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

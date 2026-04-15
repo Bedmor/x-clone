@@ -302,11 +302,16 @@ export const PostItem = React.memo(function PostItem({
           </div>
         )}
         <div className="flex gap-3">
-          <UserAvatar
-            src={dp.createdBy.image}
-            alt={dp.createdBy.name}
-            className="h-10 w-10"
-          />
+          <Link href={`/profile/${dp.createdBy.id}`} className="shrink-0">
+            <UserAvatar
+              src={dp.createdBy.image}
+              alt={
+                dp.createdBy.name ?? dp.createdBy.username ?? dp.createdBy.id
+              }
+              fallback={dp.createdBy.username ?? dp.createdBy.name}
+              className="h-10 w-10 transition hover:scale-105"
+            />
+          </Link>
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <Link
@@ -340,12 +345,14 @@ export const PostItem = React.memo(function PostItem({
                         key={i}
                         role="link"
                         tabIndex={0}
-                        className="text-blue-400 hover:underline cursor-pointer"
+                        className="cursor-pointer text-blue-400 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleInnerLinkClick(`/profile/${username}`);
                         }}
-                        onKeyDown={(e) => handleInnerLinkKeyDown(e, `/profile/${username}`)}
+                        onKeyDown={(e) =>
+                          handleInnerLinkKeyDown(e, `/profile/${username}`)
+                        }
                       >
                         {part}
                       </span>
@@ -358,12 +365,14 @@ export const PostItem = React.memo(function PostItem({
                         key={i}
                         role="link"
                         tabIndex={0}
-                        className="text-cyan-400 hover:underline cursor-pointer"
+                        className="cursor-pointer text-cyan-400 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleInnerLinkClick(`/hashtag/${tag}`);
                         }}
-                        onKeyDown={(e) => handleInnerLinkKeyDown(e, `/hashtag/${tag}`)}
+                        onKeyDown={(e) =>
+                          handleInnerLinkKeyDown(e, `/hashtag/${tag}`)
+                        }
                       >
                         {part}
                       </span>
@@ -457,7 +466,15 @@ export const PostItem = React.memo(function PostItem({
                 <div className="flex items-center gap-2">
                   <UserAvatar
                     src={dp.repostOf.createdBy.image}
-                    alt={dp.repostOf.createdBy.name}
+                    alt={
+                      dp.repostOf.createdBy.name ??
+                      dp.repostOf.createdBy.username ??
+                      dp.repostOf.createdBy.id
+                    }
+                    fallback={
+                      dp.repostOf.createdBy.username ??
+                      dp.repostOf.createdBy.name
+                    }
                     className="h-5 w-5"
                   />
                   <span className="font-bold">

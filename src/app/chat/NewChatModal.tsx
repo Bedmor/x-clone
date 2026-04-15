@@ -8,16 +8,52 @@ import { Logo } from "../_components/Logo";
 
 export function NewChatModal({
   onClose,
-  onSelectUser,
+  onCreateConversation,
 }: {
   onClose: () => void;
-  onSelectUser: (userId: string) => void;
+  onCreateConversation: (participantIds: string[], title?: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState<
+    Array<{
+      id: string;
+      name: string | null;
+      username: string | null;
+      image: string | null;
+    }>
+  >([]);
+  const [groupTitle, setGroupTitle] = useState("");
+
   const { data: users, isLoading } = api.user.searchUsers.useQuery(
     { query },
-    { enabled: query.length > 0 },
+    { enabled: query.trim().length >= 2 },
   );
+
+  const toggleUser = (user: {
+    id: string;
+    name: string | null;
+    username: string | null;
+    image: string | null;
+  }) => {
+    setSelectedUsers((current) =>
+      current.some((item) => item.id === user.id)
+        ? current.filter((item) => item.id !== user.id)
+        : [...current, user],
+    );
+  };
+
+  const handleCreate = () => {
+    if (selectedUsers.length === 0) {
+      return;
+    }
+
+    onCreateConversation(
+      selectedUsers.map((user) => user.id),
+      selectedUsers.length > 1 && groupTitle.trim().length > 0
+        ? groupTitle.trim()
+        : undefined,
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
@@ -41,6 +77,31 @@ export function NewChatModal({
           />
         </div>
 
+        {selectedUsers.length > 1 && (
+          <input
+            type="text"
+            value={groupTitle}
+            onChange={(event) => setGroupTitle(event.target.value)}
+            placeholder="Grup adı (opsiyonel)"
+            className="mb-4 w-full rounded-full border border-white/20 bg-black px-4 py-2 text-white focus:border-blue-500 focus:outline-none"
+          />
+        )}
+
+        {selectedUsers.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {selectedUsers.map((user) => (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() => toggleUser(user)}
+                className="rounded-full border border-blue-400/40 bg-blue-500/10 px-3 py-1 text-sm text-blue-200"
+              >
+                @{user.username ?? user.id}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex justify-center p-4">
@@ -53,10 +114,15 @@ export function NewChatModal({
           ) : (
             <div className="flex flex-col gap-4">
               {users?.map((user) => (
-                <div
+                <button
                   key={user.id}
-                  onClick={() => onSelectUser(user.id)}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-white/10"
+                  type="button"
+                  onClick={() => toggleUser(user)}
+                  className={`flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-white/10 ${
+                    selectedUsers.some((item) => item.id === user.id)
+                      ? "border border-blue-400/40 bg-blue-500/10"
+                      : "border border-transparent"
+                  }`}
                 >
                   <UserAvatar
                     src={user.image}
@@ -69,11 +135,22 @@ export function NewChatModal({
                       @{user.username}
                     </span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={selectedUsers.length === 0}
+          className="mt-4 rounded-full bg-blue-500 py-2 font-semibold text-white hover:bg-blue-600 disabled:opacity-50"
+        >
+          {selectedUsers.length > 1
+            ? `Grup oluştur (${selectedUsers.length})`
+            : "Sohbet başlat"}
+        </button>
       </div>
     </div>
   );

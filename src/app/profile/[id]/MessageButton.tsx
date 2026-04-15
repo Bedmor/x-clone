@@ -23,7 +23,7 @@ export function MessageButton({
 
   const handleMessage = () => {
     if (disabled) return;
-    createConversation.mutate({ participantId: userId });
+    createConversation.mutate({ participantIds: [userId] });
   };
 
   return (

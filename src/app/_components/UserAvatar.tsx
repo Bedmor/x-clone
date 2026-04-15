@@ -3,12 +3,17 @@ import Image from "next/image";
 export function UserAvatar({
   src,
   alt,
+  fallback,
   className,
 }: {
   src?: string | null;
   alt?: string | null;
+  fallback?: string | null;
   className?: string;
 }) {
+  const fallbackLabel = (fallback ?? alt ?? "U").trim();
+  const initial = fallbackLabel.charAt(0).toUpperCase() || "U";
+
   return (
     <div
       className={`relative overflow-hidden rounded-full bg-gray-500 ${className}`}
@@ -21,8 +26,8 @@ export function UserAvatar({
           className="object-cover"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-white/50">
-          ?
+        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 via-slate-600 to-slate-800 text-sm font-bold text-white">
+          {initial}
         </div>
       )}
     </div>
