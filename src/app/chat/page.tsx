@@ -178,7 +178,81 @@ export default function ChatPage() {
   });
 
   const toggleReactionMutation = api.chat.toggleReaction.useMutation({
-    onSuccess: () => {
+    onMutate: async (input) => {
+      if (!selectedConversationId) {
+        return { previousData: undefined };
+      }
+
+      await utils.chat.getMessages.cancel({
+        conversationId: selectedConversationId,
+        limit: 20,
+      });
+
+      const previousData = utils.chat.getMessages.getInfiniteData({
+        conversationId: selectedConversationId,
+        limit: 20,
+      });
+
+      utils.chat.getMessages.setInfiniteData(
+        { conversationId: selectedConversationId, limit: 20 },
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              messages: page.messages.map((message) => {
+                if (message.id !== input.messageId) {
+                  return message;
+                }
+
+                const hasReacted = message.reactions.some(
+                  (reaction) =>
+                    reaction.userId === session?.user.id &&
+                    reaction.emoji === input.emoji,
+                );
+
+                const updatedReactions = hasReacted
+                  ? message.reactions.filter(
+                      (reaction) =>
+                        !(
+                          reaction.userId === session?.user.id &&
+                          reaction.emoji === input.emoji
+                        ),
+                    )
+                  : [
+                      ...message.reactions,
+                      {
+                        id: `optimistic-${input.messageId}-${input.emoji}`,
+                        emoji: input.emoji,
+                        userId: session?.user.id ?? "",
+                      },
+                    ];
+
+                return {
+                  ...message,
+                  reactions: updatedReactions,
+                };
+              }),
+            })),
+          };
+        },
+      );
+
+      return { previousData };
+    },
+    onError: (_error, _variables, context) => {
+      if (!selectedConversationId || !context?.previousData) {
+        return;
+      }
+
+      utils.chat.getMessages.setInfiniteData(
+        { conversationId: selectedConversationId, limit: 20 },
+        context.previousData,
+      );
+    },
+    onSettled: () => {
       if (!selectedConversationId) {
         return;
       }
@@ -603,7 +677,7 @@ export default function ChatPage() {
         };
       },
     );
-    scrollToBottom();
+    requestAnimationFrame(() => scrollToBottom());
 
     try {
       await sendMessageMutation.mutateAsync({
@@ -961,7 +1035,17 @@ export default function ChatPage() {
                     }, {});
 
                     const messageActions = (
-                      <div className="relative flex shrink-0 flex-col gap-1 self-end">
+                      <div
+                        className={`absolute top-0 z-10 flex flex-col gap-1 transition-opacity duration-150 ${
+                          isMe
+                            ? "left-0 -translate-x-full"
+                            : "right-0 translate-x-full"
+                        } ${
+                          reactionPickerMessageId === message.id
+                            ? "pointer-events-auto opacity-100"
+                            : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
+                        }`}
+                      >
                         {reactionPickerMessageId === message.id && (
                           <div
                             className={`absolute bottom-full z-10 mb-2 flex gap-1 rounded-xl border border-white/20 bg-black p-1 ${
@@ -1008,12 +1092,14 @@ export default function ChatPage() {
                     return (
                       <div
                         key={message.id}
-                        className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
+                        className={`group relative flex w-full ${
+                          isMe ? "justify-end" : "justify-start"
+                        }`}
                       >
-                        <div className="flex w-fit items-end gap-2">
-                          {isMe ? messageActions : null}
+                        <div className="relative max-w-[70%]">
+                          {messageActions}
                           <div
-                            className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                            className={`rounded-2xl px-4 py-2 ${
                               isMe
                                 ? "bg-blue-500 text-white"
                                 : "bg-gray-800 text-white"
@@ -1100,18 +1186,18 @@ export default function ChatPage() {
                               )}
                             </div>
 
-                            <div className="mt-1 flex items-center justify-end gap-1">
-                              <span className="text-xs opacity-70">
-                                {formatDistanceToNow(
-                                  new Date(message.createdAt),
-                                  {
-                                    addSuffix: true,
-                                  },
-                                )}
-                              </span>
-                              {isMe &&
-                                message.id ===
-                                  messages[messages.length - 1]?.id && (
+                            {message.id ===
+                              messages[messages.length - 1]?.id && (
+                              <div className="mt-1 flex items-center justify-end gap-1">
+                                <span className="text-xs opacity-70">
+                                  {formatDistanceToNow(
+                                    new Date(message.createdAt),
+                                    {
+                                      addSuffix: true,
+                                    },
+                                  )}
+                                </span>
+                                {isMe && (
                                   <span className="text-[10px] opacity-70">
                                     {conversations
                                       ?.find(
@@ -1124,7 +1210,8 @@ export default function ChatPage() {
                                       : " • Gönderildi"}
                                   </span>
                                 )}
-                            </div>
+                              </div>
+                            )}
                           </div>
                           {!isMe ? messageActions : null}
                         </div>
