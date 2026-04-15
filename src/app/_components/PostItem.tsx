@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { api } from "~/trpc/react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { ReplyModal } from "./ReplyModal";
 import { QuoteModal } from "./QuoteModal";
 import {
@@ -253,6 +254,8 @@ export const PostItem = React.memo(function PostItem({
     }
   };
 
+  const router = useRouter();
+
   const handleOpenShareTarget = (target: "whatsapp" | "telegram" | "x") => {
     const url = `${window.location.origin}/post/${dp.id}`;
     const text = dp.content?.trim() ?? "Bu gönderiye bak";
@@ -268,6 +271,20 @@ export const PostItem = React.memo(function PostItem({
 
     window.open(targetUrl, "_blank", "noopener,noreferrer");
     setShowShareMenu(false);
+  };
+
+  const handleInnerLinkClick = (href: string) => {
+    router.push(href);
+  };
+
+  const handleInnerLinkKeyDown = (
+    event: React.KeyboardEvent<HTMLSpanElement>,
+    href: string,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      router.push(href);
+    }
   };
 
   return (
@@ -319,27 +336,37 @@ export const PostItem = React.memo(function PostItem({
                   if (part.startsWith("@")) {
                     const username = part.slice(1);
                     return (
-                      <Link
+                      <span
                         key={i}
-                        href={`/profile/${username}`}
-                        className="text-blue-400 hover:underline"
-                        onClick={(e) => e.stopPropagation()}
+                        role="link"
+                        tabIndex={0}
+                        className="text-blue-400 hover:underline cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInnerLinkClick(`/profile/${username}`);
+                        }}
+                        onKeyDown={(e) => handleInnerLinkKeyDown(e, `/profile/${username}`)}
                       >
                         {part}
-                      </Link>
+                      </span>
                     );
                   }
                   if (part.startsWith("#")) {
                     const tag = part.slice(1);
                     return (
-                      <Link
+                      <span
                         key={i}
-                        href={`/hashtag/${tag}`}
-                        className="text-cyan-400 hover:underline"
-                        onClick={(e) => e.stopPropagation()}
+                        role="link"
+                        tabIndex={0}
+                        className="text-cyan-400 hover:underline cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInnerLinkClick(`/hashtag/${tag}`);
+                        }}
+                        onKeyDown={(e) => handleInnerLinkKeyDown(e, `/hashtag/${tag}`)}
                       >
                         {part}
-                      </Link>
+                      </span>
                     );
                   }
                   return part;
