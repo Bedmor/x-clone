@@ -556,6 +556,7 @@ export default function ChatPage() {
       id: tempId,
       content,
       attachmentUrl: null,
+      isSystem: false,
       conversationId: selectedConversationId,
       senderId: String(session.user.id),
       createdAt: new Date(),
@@ -939,27 +940,25 @@ export default function ChatPage() {
                       );
                     }
 
-                    const groupedReactions = message.reactions.reduce(
-                      (acc, reaction) => {
-                        const key = reaction.emoji;
+                    const groupedReactions = message.reactions.reduce<
+                      Record<string, { count: number; reactedByMe: boolean }>
+                    >((acc, reaction) => {
+                      const key = String(reaction.emoji);
+                      let entry = acc[key];
 
-                        if (!acc[key]) {
-                          acc[key] = { count: 0, reactedByMe: false };
-                        }
+                      if (!entry) {
+                        entry = { count: 0, reactedByMe: false };
+                        acc[key] = entry;
+                      }
 
-                        acc[key].count += 1;
+                      entry.count += 1;
 
-                        if (reaction.userId === session.user.id) {
-                          acc[key].reactedByMe = true;
-                        }
+                      if (reaction.userId === session.user.id) {
+                        entry.reactedByMe = true;
+                      }
 
-                        return acc;
-                      },
-                      {} as Record<
-                        string,
-                        { count: number; reactedByMe: boolean }
-                      >,
-                    );
+                      return acc;
+                    }, {});
 
                     const messageActions = (
                       <div className="relative flex shrink-0 flex-col gap-1 self-end">
@@ -1055,10 +1054,12 @@ export default function ChatPage() {
                                     {sharedPost.mediaUrls
                                       .slice(0, 3)
                                       .map((url) => (
-                                        <img
+                                        <Image
                                           key={url}
                                           src={url}
                                           alt="Paylaşılan gönderi medyası"
+                                          width={160}
+                                          height={160}
                                           className="h-20 w-full rounded-xl object-cover"
                                         />
                                       ))}
