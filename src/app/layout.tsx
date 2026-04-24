@@ -4,6 +4,7 @@ import { type Metadata } from "next";
 import { Schibsted_Grotesk } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "~/server/auth";
+import { isAdminSession } from "~/server/auth/admin";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { Sidebar } from "./_components/Sidebar";
@@ -30,6 +31,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
+  const isAdmin = await isAdminSession(session);
 
   return (
     <html lang="en" className={`${schibstedGrotesk.variable}`}>
@@ -39,12 +41,12 @@ export default async function RootLayout({
           <TRPCReactProvider>
             <div className="flex h-screen justify-center">
               <div className="flex w-full max-w-7xl">
-                <Sidebar />
+                <Sidebar session={session} isAdmin={isAdmin} />
                 <main className="flex-1 pb-16 md:border-r md:border-white/20 md:pb-0">
                   {children}
                 </main>
               </div>
-              <BottomNav />
+              <BottomNav session={session} isAdmin={isAdmin} />
             </div>
           </TRPCReactProvider>
         </SessionProvider>

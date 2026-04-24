@@ -2,11 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { BarChart3, ImagePlus, X } from "lucide-react";
 import { api } from "~/trpc/react";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
-import { ImageCropperModal } from "./ImageCropperModal";
+
+const ImageCropperModal = dynamic(
+  () => import("./ImageCropperModal").then((mod) => mod.ImageCropperModal),
+  { ssr: false },
+);
 
 export function CreatePost({
   parentId,
@@ -185,7 +190,8 @@ export function CreatePost({
                     alt="Uploaded media"
                     width={720}
                     height={720}
-                    unoptimized
+                    unoptimized={url.startsWith("blob:")}
+                    sizes="(max-width: 768px) 50vw, 360px"
                     className="h-32 w-full object-cover"
                   />
                 )}

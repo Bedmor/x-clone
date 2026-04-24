@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { auth } from "~/server/auth";
-import { isAdminSession } from "~/server/auth/admin";
+import type { Session } from "next-auth";
 import {
   Home,
   User,
@@ -14,10 +13,13 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 
-export async function Sidebar() {
-  const session = await auth();
-  const isAdmin = await isAdminSession(session);
-
+export function Sidebar({
+  session,
+  isAdmin,
+}: {
+  session: Session | null;
+  isAdmin: boolean;
+}) {
   return (
     <div className="hidden h-full w-64 flex-col border-r border-white/20 p-4 md:flex">
       <div className="mb-8 flex items-center gap-2 text-2xl font-bold">

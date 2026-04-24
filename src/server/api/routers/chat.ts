@@ -4,6 +4,23 @@ import Ably from "ably";
 import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "../../../../generated/prisma";
 
+const slowQueryThresholdMs = Number(process.env.DB_SLOW_QUERY_MS ?? 200);
+
+async function withQueryTiming<T>(label: string, fn: () => Promise<T>) {
+  const startedAt = Date.now();
+  const result = await fn();
+  const durationMs = Date.now() - startedAt;
+
+  if (
+    process.env.LOG_ALL_DB_QUERIES === "1" ||
+    durationMs >= slowQueryThresholdMs
+  ) {
+    console.log(`[DB] ${label} took ${durationMs}ms`);
+  }
+
+  return result;
+}
+
 const conversationParticipantSelect = {
   userId: true,
   role: true,
@@ -302,41 +319,8 @@ export const chatRouter = createTRPCRouter({
     }),
 
   getConversations: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.conversation.findMany({
-      where: {
-        participants: {
-          some: {
-            userId: ctx.session.user.id,
-          },
-        },
-      },
-      select: {
-        id: true,
-        title: true,
-        updatedAt: true,
-        participants: {
-          select: conversationParticipantSelect,
-        },
-        messages: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 1,
-          select: conversationMessageSelect,
-        },
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
-  }),
-
-  getRecentConversations: protectedProcedure
-    .input(z.object({ limit: z.number().min(1).max(10).default(5) }).optional())
-    .query(async ({ ctx, input }) => {
-      const limit = input?.limit ?? 5;
-
-      return ctx.db.conversation.findMany({
+    return withQueryTiming("chat.getConversations.findMany", () =>
+      ctx.db.conversation.findMany({
         where: {
           participants: {
             some: {
@@ -344,7 +328,6 @@ export const chatRouter = createTRPCRouter({
             },
           },
         },
-        take: limit,
         select: {
           id: true,
           title: true,
@@ -363,7 +346,45 @@ export const chatRouter = createTRPCRouter({
         orderBy: {
           updatedAt: "desc",
         },
-      });
+      }),
+    );
+  }),
+
+  getRecentConversations: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(10).default(5) }).optional())
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 5;
+
+      return withQueryTiming("chat.getRecentConversations.findMany", () =>
+        ctx.db.conversation.findMany({
+          where: {
+            participants: {
+              some: {
+                userId: ctx.session.user.id,
+              },
+            },
+          },
+          take: limit,
+          select: {
+            id: true,
+            title: true,
+            updatedAt: true,
+            participants: {
+              select: conversationParticipantSelect,
+            },
+            messages: {
+              orderBy: {
+                createdAt: "desc",
+              },
+              take: 1,
+              select: conversationMessageSelect,
+            },
+          },
+          orderBy: {
+            updatedAt: "desc",
+          },
+        }),
+      );
     }),
 
   getMessages: protectedProcedure
@@ -378,56 +399,58 @@ export const chatRouter = createTRPCRouter({
       const limit = input.limit ?? 20;
       const { cursor } = input;
 
-      const messages = await ctx.db.message.findMany({
-        where: {
-          conversationId: input.conversationId,
-        },
-        take: limit + 1,
-        cursor: cursor ? { id: cursor } : undefined,
-        orderBy: {
-          createdAt: "desc",
-        },
-        select: {
-          id: true,
-          content: true,
-          attachmentUrl: true,
-          isSystem: true,
-          createdAt: true,
-          senderId: true,
-          conversationId: true,
-          replyTo: {
-            select: {
-              id: true,
-              content: true,
-              senderId: true,
-              sender: {
-                select: {
-                  id: true,
-                  name: true,
-                  username: true,
-                  image: true,
+      const messages = await withQueryTiming("chat.getMessages.findMany", () =>
+        ctx.db.message.findMany({
+          where: {
+            conversationId: input.conversationId,
+          },
+          take: limit + 1,
+          cursor: cursor ? { id: cursor } : undefined,
+          orderBy: {
+            createdAt: "desc",
+          },
+          select: {
+            id: true,
+            content: true,
+            attachmentUrl: true,
+            isSystem: true,
+            createdAt: true,
+            senderId: true,
+            conversationId: true,
+            replyTo: {
+              select: {
+                id: true,
+                content: true,
+                senderId: true,
+                sender: {
+                  select: {
+                    id: true,
+                    name: true,
+                    username: true,
+                    image: true,
+                  },
                 },
               },
             },
-          },
-          reactions: {
-            select: {
-              id: true,
-              emoji: true,
-              userId: true,
+            reactions: {
+              select: {
+                id: true,
+                emoji: true,
+                userId: true,
+              },
+            },
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                image: true,
+                lastSeen: true,
+              },
             },
           },
-          sender: {
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              image: true,
-              lastSeen: true,
-            },
-          },
-        },
-      });
+        }),
+      );
 
       let nextCursor: typeof cursor | undefined = undefined;
       if (messages.length > limit) {

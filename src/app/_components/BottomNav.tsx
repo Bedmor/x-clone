@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { auth } from "~/server/auth";
-import { db } from "~/server/db";
+import type { Session } from "next-auth";
 import {
   Home,
   User,
@@ -14,16 +13,13 @@ import {
   Flag,
 } from "lucide-react";
 
-export async function BottomNav() {
-  const session = await auth();
-  const adminUser = session?.user?.id
-    ? await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { username: true },
-      })
-    : null;
-  const isAdmin = adminUser?.username === "acabesim";
-
+export function BottomNav({
+  session,
+  isAdmin,
+}: {
+  session: Session | null;
+  isAdmin: boolean;
+}) {
   return (
     <div className="fixed right-0 bottom-0 left-0 z-50 flex h-16 w-full items-center justify-around border-t border-white/20 bg-black md:hidden">
       <Link

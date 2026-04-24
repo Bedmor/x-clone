@@ -6,6 +6,8 @@ import { auth } from "~/server/auth";
 import { isAdminSession } from "~/server/auth/admin";
 import { db } from "~/server/db";
 
+export const dynamic = "force-dynamic";
+
 const reportReasonLabels: Record<string, string> = {
   SPAM: "Spam",
   HARASSMENT: "Harassment",

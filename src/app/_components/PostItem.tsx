@@ -4,9 +4,8 @@ import React, { useState } from "react";
 import { api } from "~/trpc/react";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ReplyModal } from "./ReplyModal";
-import { QuoteModal } from "./QuoteModal";
 import {
   Heart,
   Bookmark,
@@ -22,7 +21,21 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { useSession } from "next-auth/react";
-import { SharePostModal } from "./SharePostModal";
+
+const ReplyModal = dynamic(
+  () => import("./ReplyModal").then((mod) => mod.ReplyModal),
+  { ssr: false },
+);
+
+const QuoteModal = dynamic(
+  () => import("./QuoteModal").then((mod) => mod.QuoteModal),
+  { ssr: false },
+);
+
+const SharePostModal = dynamic(
+  () => import("./SharePostModal").then((mod) => mod.SharePostModal),
+  { ssr: false },
+);
 
 type PollOption = {
   id: number;
@@ -121,7 +134,6 @@ export const PostItem = React.memo(function PostItem({
       setLikesCount(dpCount.likes);
     },
     onSettled: () => {
-      void utils.post.getAll.invalidate();
       void utils.post.getPost.invalidate({ id: dp.id });
     },
   });
@@ -134,7 +146,6 @@ export const PostItem = React.memo(function PostItem({
       setIsBookmarked(dp.isBookmarked ?? false);
     },
     onSettled: () => {
-      void utils.post.getAll.invalidate();
       void utils.post.getPost.invalidate({ id: dp.id });
       void utils.post.getBookmarks.invalidate();
     },
@@ -151,7 +162,6 @@ export const PostItem = React.memo(function PostItem({
       setRepostsCount(dpCount.reposts);
     },
     onSettled: () => {
-      void utils.post.getAll.invalidate();
       void utils.post.getPost.invalidate({ id: dp.id });
     },
   });
@@ -161,7 +171,6 @@ export const PostItem = React.memo(function PostItem({
       setSelectedOptionId(optionId);
     },
     onSettled: () => {
-      void utils.post.getAll.invalidate();
       void utils.post.getPost.invalidate({ id: dp.id });
       void utils.user.getProfile.invalidate();
       void utils.post.getBookmarks.invalidate();
@@ -403,7 +412,7 @@ export const PostItem = React.memo(function PostItem({
                           alt="Gönderi medyası"
                           width={1024}
                           height={1024}
-                          unoptimized
+                          sizes="(max-width: 640px) 100vw, 50vw"
                           className="h-56 w-full object-cover"
                         />
                       )}

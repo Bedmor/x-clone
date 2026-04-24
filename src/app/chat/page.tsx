@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
-import Ably from "ably";
+import type * as Ably from "ably";
 import { UserAvatar } from "../_components/UserAvatar";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -17,7 +18,6 @@ import {
   SmilePlus,
   Reply,
 } from "lucide-react";
-import { NewChatModal } from "./NewChatModal";
 import Image from "next/image";
 import { type inferRouterOutputs } from "@trpc/server";
 import { type AppRouter } from "~/server/api/root";
@@ -29,6 +29,11 @@ type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
 type Conversation = RouterOutputs["chat"]["getConversations"][number];
 
 import { Logo } from "../_components/Logo";
+
+const NewChatModal = dynamic(
+  () => import("./NewChatModal").then((mod) => mod.NewChatModal),
+  { ssr: false },
+);
 
 const REACTION_OPTIONS = ["👍", "❤️", "😂", "🔥", "👏"] as const;
 
@@ -106,7 +111,7 @@ export default function ChatPage() {
   const { data: conversations, refetch: refetchConversations } =
     api.chat.getConversations.useQuery(undefined, {
       staleTime: 30000,
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: false,
     });
 
   const selectedConversation = conversations?.find(
@@ -359,11 +364,24 @@ export default function ChatPage() {
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    const client = new Ably.Realtime({ authUrl: "/api/ably" });
-    setAblyClient(client);
+    let client: Ably.Realtime | null = null;
+    let isCancelled = false;
+
+    void (async () => {
+      const { default: AblyLib } = await import("ably");
+      if (isCancelled) {
+        return;
+      }
+
+      client = new AblyLib.Realtime({ authUrl: "/api/ably" });
+      setAblyClient(client);
+    })();
 
     return () => {
-      client.close();
+      isCancelled = true;
+      if (client) {
+        client.close();
+      }
     };
   }, [session?.user?.id]);
 
@@ -474,7 +492,6 @@ export default function ChatPage() {
         },
       );
       scrollToBottom();
-      void refetchConversations();
     };
 
     const onTyping = (message: Ably.Message) => {
@@ -519,7 +536,6 @@ export default function ChatPage() {
     ablyClient,
     selectedConversationId,
     utils,
-    refetchConversations,
     markConversationAsRead,
     session?.user.id,
   ]);

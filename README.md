@@ -106,11 +106,60 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 - `npm run dev`: Starts the development server.
 - `npm run build`: Builds the application for production.
+- `npm run analyze`: Builds with bundle analyzer output in `.next/analyze`.
 - `npm run start`: Starts the production server.
 - `npm run lint`: Runs ESLint.
 - `npm run typecheck`: Runs TypeScript type checking.
 - `npm run db:studio`: Opens Prisma Studio to view/edit database records.
 - `npm run db:generate`: Generates the Prisma Client.
+- `npm run prisma:generate`: Generates Prisma Client (uses `--no-engine` in production by default).
+- `npm run prisma:generate:dev`: Forces standard Prisma generate.
+- `npm run prisma:generate:prod`: Forces `prisma generate --no-engine`.
+
+## Performance Profiling
+
+## Prisma Generation (Production-Safe)
+
+`postinstall` now runs a small wrapper script:
+
+- Development (`NODE_ENV != production`): runs `prisma generate`
+- Production (`NODE_ENV=production`): runs `prisma generate --no-engine`
+
+Optional override:
+
+- `PRISMA_GENERATE_NO_ENGINE=1` force `--no-engine`
+- `PRISMA_GENERATE_NO_ENGINE=0` force normal engine generation
+
+### Bundle Analysis
+
+Run the analyzer build:
+
+```bash
+npm run analyze
+```
+
+Generated reports:
+
+- `.next/analyze/client.html`
+- `.next/analyze/nodejs.html`
+- `.next/analyze/edge.html`
+
+### Slow Query Logging (tRPC routers)
+
+The chat and post routers include query timing logs for heavy Prisma queries.
+
+- `DB_SLOW_QUERY_MS`: log only queries slower than this threshold (default `200` ms)
+- `LOG_ALL_DB_QUERIES=1`: log all instrumented queries regardless of duration
+
+Examples:
+
+```bash
+DB_SLOW_QUERY_MS=120 npm run dev
+```
+
+```bash
+LOG_ALL_DB_QUERIES=1 npm run dev
+```
 
 ## License
 

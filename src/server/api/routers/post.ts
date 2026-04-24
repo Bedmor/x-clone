@@ -9,6 +9,23 @@ import {
 } from "~/server/api/trpc";
 import { deleteR2ObjectByUrl } from "~/server/lib/r2";
 
+const slowQueryThresholdMs = Number(process.env.DB_SLOW_QUERY_MS ?? 200);
+
+async function withQueryTiming<T>(label: string, fn: () => Promise<T>) {
+  const startedAt = Date.now();
+  const result = await fn();
+  const durationMs = Date.now() - startedAt;
+
+  if (
+    process.env.LOG_ALL_DB_QUERIES === "1" ||
+    durationMs >= slowQueryThresholdMs
+  ) {
+    console.log(`[DB] ${label} took ${durationMs}ms`);
+  }
+
+  return result;
+}
+
 const postInclude = (userId: string | undefined) => ({
   createdBy: {
     select: { id: true, name: true, username: true, image: true },
@@ -141,6 +158,85 @@ const postInclude = (userId: string | undefined) => ({
             select: { likes: true, replies: true, reposts: true },
           },
         },
+      },
+      _count: {
+        select: { likes: true, replies: true, reposts: true },
+      },
+    },
+  },
+  _count: {
+    select: { likes: true, replies: true, reposts: true },
+  },
+});
+
+const postFeedInclude = (userId: string | undefined) => ({
+  createdBy: {
+    select: { id: true, name: true, username: true, image: true },
+  },
+  likes: {
+    where: { userId: userId ?? "" },
+  },
+  bookmarks: {
+    where: { userId: userId ?? "" },
+    select: { userId: true },
+  },
+  poll: {
+    include: {
+      options: {
+        include: {
+          votes: {
+            where: { userId: userId ?? "" },
+            select: { userId: true },
+          },
+          _count: {
+            select: { votes: true },
+          },
+        },
+        orderBy: { id: "asc" as const },
+      },
+    },
+  },
+  reposts: {
+    where: { createdById: userId ?? "" },
+  },
+  pinnedBy: {
+    where: { id: userId ?? "" },
+    select: { id: true },
+  },
+  repostOf: {
+    include: {
+      createdBy: {
+        select: { id: true, name: true, username: true, image: true },
+      },
+      likes: {
+        where: { userId: userId ?? "" },
+      },
+      bookmarks: {
+        where: { userId: userId ?? "" },
+        select: { userId: true },
+      },
+      poll: {
+        include: {
+          options: {
+            include: {
+              votes: {
+                where: { userId: userId ?? "" },
+                select: { userId: true },
+              },
+              _count: {
+                select: { votes: true },
+              },
+            },
+            orderBy: { id: "asc" as const },
+          },
+        },
+      },
+      reposts: {
+        where: { createdById: userId ?? "" },
+      },
+      pinnedBy: {
+        where: { id: userId ?? "" },
+        select: { id: true },
       },
       _count: {
         select: { likes: true, replies: true, reposts: true },
@@ -514,20 +610,16 @@ export const postRouter = createTRPCRouter({
         whereClause.createdAt = { gte: fourDaysAgo };
       }
 
-      const posts = await ctx.db.post.findMany({
-        take: 50,
-        orderBy: { createdAt: "desc" },
-        where: whereClause,
-        include: postInclude(userId),
-      });
+      const posts = await withQueryTiming("post.getAll.findMany", () =>
+        ctx.db.post.findMany({
+          take: 30,
+          orderBy: { createdAt: "desc" },
+          where: whereClause,
+          include: postFeedInclude(userId),
+        }),
+      );
 
-      // Randomize for "For You" tab
-      let finalPosts = posts;
-      if (tab === "for-you") {
-        finalPosts = posts.sort(() => Math.random() - 0.5);
-      }
-
-      return finalPosts.map((post) => mapPost(post));
+      return posts.map((post) => mapPost(post));
   }),
 
   searchPosts: publicProcedure
@@ -551,7 +643,7 @@ export const postRouter = createTRPCRouter({
       }
 
       const posts = await ctx.db.post.findMany({
-        take: 50,
+        take: 30,
         orderBy: { createdAt: "desc" },
         where: {
           AND: [
@@ -576,7 +668,7 @@ export const postRouter = createTRPCRouter({
             },
           ],
         },
-        include: postInclude(userId),
+        include: postFeedInclude(userId),
       });
 
       return posts.map((post) => mapPost(post));
@@ -604,7 +696,7 @@ export const postRouter = createTRPCRouter({
       }
 
       const posts = await ctx.db.post.findMany({
-        take: 50,
+        take: 30,
         orderBy: { createdAt: "desc" },
         where: {
           AND: [
@@ -619,7 +711,7 @@ export const postRouter = createTRPCRouter({
             },
           ],
         },
-        include: postInclude(userId),
+        include: postFeedInclude(userId),
       });
 
       return posts.map((post) => mapPost(post));
@@ -703,21 +795,23 @@ export const postRouter = createTRPCRouter({
         );
       }
 
-      const posts = await ctx.db.post.findMany({
-        where: {
-          AND: [
-            visibilityWhere(userId),
-            {
-              parentId: null,
-              createdAt: { gte: since },
-              createdById: { notIn: blockedUserIds },
-            },
-          ],
-        },
-        take: 100,
-        orderBy: { createdAt: "desc" },
-        include: postInclude(userId),
-      });
+      const posts = await withQueryTiming("post.getTrendingPosts.findMany", () =>
+        ctx.db.post.findMany({
+          where: {
+            AND: [
+              visibilityWhere(userId),
+              {
+                parentId: null,
+                createdAt: { gte: since },
+                createdById: { notIn: blockedUserIds },
+              },
+            ],
+          },
+          take: 60,
+          orderBy: { createdAt: "desc" },
+          include: postFeedInclude(userId),
+        }),
+      );
 
       return posts
         .map((post) => ({
@@ -809,18 +903,20 @@ export const postRouter = createTRPCRouter({
     }),
 
   getBookmarks: protectedProcedure.query(async ({ ctx }) => {
-    const bookmarks = await ctx.db.bookmark.findMany({
-        where: {
-          userId: ctx.session.user.id,
-          post: visibilityWhere(ctx.session.user.id),
-        },
-        orderBy: { createdAt: "desc" },
-        include: {
-          post: {
-            include: postInclude(ctx.session.user.id),
+    const bookmarks = await withQueryTiming("post.getBookmarks.findMany", () =>
+      ctx.db.bookmark.findMany({
+          where: {
+            userId: ctx.session.user.id,
+            post: visibilityWhere(ctx.session.user.id),
           },
-        },
-      });
+          orderBy: { createdAt: "desc" },
+          include: {
+            post: {
+              include: postFeedInclude(ctx.session.user.id),
+            },
+          },
+        }),
+    );
 
       return bookmarks.map((bookmark) => mapPost(bookmark.post));
   }),
@@ -828,20 +924,22 @@ export const postRouter = createTRPCRouter({
   getPost: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const post = await ctx.db.post.findFirst({
-        where: {
-          id: input.id,
-          AND: [visibilityWhere(ctx.session?.user?.id)],
-        },
-        include: {
-          ...postInclude(ctx.session?.user?.id),
-          replies: {
-            where: visibilityWhere(ctx.session?.user?.id),
-            include: postInclude(ctx.session?.user?.id),
-            orderBy: { createdAt: "desc" },
+      const post = await withQueryTiming("post.getPost.findFirst", () =>
+        ctx.db.post.findFirst({
+          where: {
+            id: input.id,
+            AND: [visibilityWhere(ctx.session?.user?.id)],
           },
-        },
-      });
+          include: {
+            ...postInclude(ctx.session?.user?.id),
+            replies: {
+              where: visibilityWhere(ctx.session?.user?.id),
+              include: postInclude(ctx.session?.user?.id),
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        }),
+      );
 
       if (!post) return null;
 
