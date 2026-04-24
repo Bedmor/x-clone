@@ -99,6 +99,7 @@ export const PostItem = React.memo(function PostItem({
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
+  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<number | null>(
     dp.poll?.options.find((option: PollOption) => option.hasVoted)?.id ?? null,
   );
@@ -407,14 +408,20 @@ export const PostItem = React.memo(function PostItem({
                           controls
                         />
                       ) : (
-                        <Image
-                          src={url}
-                          alt="Gönderi medyası"
-                          width={1024}
-                          height={1024}
-                          sizes="(max-width: 640px) 100vw, 50vw"
-                          className="h-56 w-full object-cover"
-                        />
+                        <button
+                          type="button"
+                          className="block w-full cursor-zoom-in"
+                          onClick={() => setActiveImageUrl(url)}
+                        >
+                          <Image
+                            src={url}
+                            alt="Gönderi medyası"
+                            width={1024}
+                            height={1024}
+                            sizes="(max-width: 640px) 100vw, 50vw"
+                            className="h-56 w-full object-cover"
+                          />
+                        </button>
                       )}
                     </div>
                   );
@@ -714,6 +721,29 @@ export const PostItem = React.memo(function PostItem({
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
       />
+      {activeImageUrl && (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setActiveImageUrl(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 rounded-full bg-black/70 px-3 py-1 text-sm font-semibold text-white hover:bg-black"
+            onClick={() => setActiveImageUrl(null)}
+          >
+            Kapat
+          </button>
+          <Image
+            src={activeImageUrl}
+            alt="Büyütülmüş gönderi görseli"
+            width={1600}
+            height={1600}
+            sizes="100vw"
+            className="max-h-[92vh] w-auto max-w-[95vw] rounded-xl object-contain"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   );
 });

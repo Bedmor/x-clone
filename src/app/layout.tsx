@@ -9,6 +9,7 @@ import { isAdminSession } from "~/server/auth/admin";
 import { TRPCReactProvider } from "~/trpc/react";
 import { Sidebar } from "./_components/Sidebar";
 import { BottomNav } from "./_components/BottomNav";
+import { MobileHeader } from "./_components/MobileHeader";
 import { ThemeInitializer } from "./_components/ThemeToggle";
 
 export const metadata: Metadata = {
@@ -43,10 +44,11 @@ export default async function RootLayout({
               <div className="flex w-full max-w-7xl">
                 <Sidebar session={session} isAdmin={isAdmin} />
                 <main className="flex-1 pb-16 md:border-r md:border-white/20 md:pb-0">
+                  <MobileHeader session={session} isAdmin={isAdmin} />
                   {children}
                 </main>
               </div>
-              <BottomNav session={session} isAdmin={isAdmin} />
+              <BottomNav session={session} />
             </div>
           </TRPCReactProvider>
         </SessionProvider>

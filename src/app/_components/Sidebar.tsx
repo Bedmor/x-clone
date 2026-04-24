@@ -12,6 +12,7 @@ import {
   Flag,
 } from "lucide-react";
 import { Logo } from "./Logo";
+import { UserAvatar } from "./UserAvatar";
 
 export function Sidebar({
   session,
@@ -94,13 +95,33 @@ export function Sidebar({
       </nav>
       <div className="mt-auto flex flex-col gap-2">
         {session ? (
-          <Link
-            href="/api/auth/signout"
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-red-500 py-3 font-bold hover:bg-red-600"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Çıkış Yap</span>
-          </Link>
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl border border-white/20 p-3 hover:bg-white/10">
+              <UserAvatar
+                src={session.user.image}
+                alt={session.user.name}
+                fallback={session.user.username ?? session.user.name}
+                className="h-11 w-11"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">
+                  {session.user.name ?? "Kullanıcı"}
+                </div>
+                <div className="truncate text-xs text-gray-400">
+                  @{session.user.username ?? session.user.id}
+                </div>
+              </div>
+            </summary>
+            <div className="mt-2">
+              <Link
+                href="/api/auth/signout"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-red-500 py-2.5 font-bold hover:bg-red-600"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>Çıkış Yap</span>
+              </Link>
+            </div>
+          </details>
         ) : (
           <>
             <Link
