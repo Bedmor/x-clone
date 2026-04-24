@@ -21,6 +21,12 @@ export function Sidebar({
   session: Session | null;
   isAdmin: boolean;
 }) {
+  const userImage =
+    typeof session?.user.image === "string" ? session.user.image : null;
+  const userName =
+    typeof session?.user.name === "string" ? session.user.name : null;
+  const userId = typeof session?.user.id === "string" ? session.user.id : "";
+
   return (
     <div className="hidden h-full w-64 flex-col border-r border-white/20 p-4 md:flex">
       <div className="mb-8 flex items-center gap-2 text-2xl font-bold">
@@ -77,7 +83,7 @@ export function Sidebar({
               <span>Mesajlar</span>
             </Link>
             <Link
-              href={`/profile/${session.user.id}`}
+              href={`/profile/${userId}`}
               className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
             >
               <User className="h-7 w-7" />
@@ -98,18 +104,16 @@ export function Sidebar({
           <details className="group">
             <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl border border-white/20 p-3 hover:bg-white/10">
               <UserAvatar
-                src={session.user.image}
-                alt={session.user.name}
-                fallback={session.user.username ?? session.user.name}
+                src={userImage}
+                alt={userName}
+                fallback={userName ?? userId}
                 className="h-11 w-11"
               />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">
-                  {session.user.name ?? "Kullanıcı"}
+                  {userName ?? "Kullanıcı"}
                 </div>
-                <div className="truncate text-xs text-gray-400">
-                  @{session.user.username ?? session.user.id}
-                </div>
+                <div className="truncate text-xs text-gray-400">@{userId}</div>
               </div>
             </summary>
             <div className="mt-2">
