@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { api } from "~/trpc/react";
 
+import { useSession } from "next-auth/react";
+
 export function QuoteModal({
   postId,
   isOpen,
@@ -13,13 +15,70 @@ export function QuoteModal({
   onClose: () => void;
 }) {
   const [content, setContent] = useState("");
+  const { data: session } = useSession();
   const utils = api.useUtils();
   const createQuote = api.post.create.useMutation({
-    onSuccess: async () => {
-      await utils.post.getAll.invalidate();
-      await utils.post.getPost.invalidate({ id: postId });
+    onMutate: async (newQuote) => {
+      await utils.post.getAll.cancel();
+      await utils.post.getPost.cancel({ id: postId });
+
+      const prevForYou = utils.post.getAll.getData({ tab: "for-you" });
+      const prevFollowing = utils.post.getAll.getData({ tab: "following" });
+      const prevPost = utils.post.getPost.getData({ id: postId });
+
+      const optimisticQuote = {
+        id: -Date.now(),
+        content: newQuote.content ?? null,
+        mediaUrls: [],
+        createdAt: new Date(),
+        parentId: null,
+        isLiked: false,
+        isBookmarked: false,
+        isReposted: false,
+        isPinned: false,
+        createdBy: {
+          id: session?.user?.id ?? "temp",
+          name: session?.user?.name ?? "User",
+          username: session?.user?.email ?? "user",
+          image: session?.user?.image ?? null,
+        },
+        _count: {
+          likes: 0,
+          replies: 0,
+          reposts: 0,
+          quotes: 0,
+        },
+        repostOf: prevPost ?? null,
+      } as any;
+
+      if (prevForYou) {
+        utils.post.getAll.setData({ tab: "for-you" }, (data: any) => {
+          if (!data) return data;
+          return [optimisticQuote, ...data];
+        });
+      }
+      if (prevFollowing) {
+        utils.post.getAll.setData({ tab: "following" }, (data: any) => {
+          if (!data) return data;
+          return [optimisticQuote, ...data];
+        });
+      }
+
       setContent("");
       onClose();
+
+      return { prevForYou, prevFollowing, prevPost };
+    },
+    onError: (err, newQuote, context) => {
+      if (context?.prevForYou)
+        utils.post.getAll.setData({ tab: "for-you" }, context.prevForYou);
+      if (context?.prevFollowing)
+        utils.post.getAll.setData({ tab: "following" }, context.prevFollowing);
+      setContent(newQuote.content ?? "");
+    },
+    onSettled: async () => {
+      await utils.post.getAll.invalidate();
+      await utils.post.getPost.invalidate({ id: postId });
     },
   });
 

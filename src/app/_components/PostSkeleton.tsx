@@ -27,9 +27,6 @@ export function PostSkeleton() {
 export function PostSkeletonList() {
   return (
     <div className="flex flex-col">
-      <div className="flex justify-center py-4">
-        <Logo className="h-8 w-8 animate-spin text-white" />
-      </div>
       {Array.from({ length: 5 }).map((_, i) => (
         <PostSkeleton key={i} />
       ))}

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { BarChart3, ImagePlus, X } from "lucide-react";
 import { api } from "~/trpc/react";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
+import { useSession } from "next-auth/react";
 
 const ImageCropperModal = dynamic(
   () => import("./ImageCropperModal").then((mod) => mod.ImageCropperModal),
@@ -21,6 +22,7 @@ export function CreatePost({
   placeholder?: string;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [content, setContent] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [pollEnabled, setPollEnabled] = useState(false);
@@ -77,16 +79,108 @@ export function CreatePost({
   }, [content, draftKey, isHydrated, mediaUrls]);
 
   const createPost = api.post.create.useMutation({
-    onSuccess: async () => {
-      await utils.post.getAll.invalidate();
+    onMutate: async (newPost) => {
+      await utils.post.getAll.cancel();
       if (parentId) {
-        await utils.post.getPost.invalidate({ id: parentId });
+        await utils.post.getPost.cancel({ id: parentId });
       }
+
+      const prevForYou = utils.post.getAll.getData({ tab: "for-you" });
+      const prevFollowing = utils.post.getAll.getData({ tab: "following" });
+      let prevPost: any;
+
+      const optimisticPost = {
+        id: -Date.now(),
+        content: newPost.content ?? null,
+        mediaUrls: newPost.mediaUrls ?? [],
+        createdAt: new Date(),
+        parentId: parentId ?? null,
+        isLiked: false,
+        isBookmarked: false,
+        isReposted: false,
+        isPinned: false,
+        createdBy: {
+          id: session?.user?.id ?? "temp",
+          name: session?.user?.name ?? "User",
+          username: session?.user?.name ?? "user",
+          image: session?.user?.image ?? null,
+        },
+        _count: {
+          likes: 0,
+          replies: 0,
+          reposts: 0,
+          quotes: 0,
+        },
+        repostOf: null,
+        poll:
+          newPost.pollOptions?.length && newPost.pollOptions[0] !== ""
+            ? {
+                totalVotes: 0,
+                options: newPost.pollOptions.map((opt, i) => ({
+                  id: -i,
+                  text: opt,
+                  voteCount: 0,
+                  hasVoted: false,
+                })),
+              }
+            : null,
+      } as any;
+
+      if (prevForYou) {
+        utils.post.getAll.setData({ tab: "for-you" }, (data: any) => {
+          if (!data) return data;
+          return [optimisticPost, ...(Array.isArray(data) ? data : [])];
+        });
+      }
+
+      if (prevFollowing) {
+        utils.post.getAll.setData({ tab: "following" }, (data: any) => {
+          if (!data) return data;
+          return [optimisticPost, ...(Array.isArray(data) ? data : [])];
+        });
+      }
+
+      if (parentId) {
+        prevPost = utils.post.getPost.getData({ id: parentId });
+        if (prevPost) {
+          utils.post.getPost.setData({ id: parentId }, {
+            ...prevPost,
+            replies: [optimisticPost, ...(prevPost.replies || [])],
+            _count: {
+              ...prevPost._count,
+              replies: prevPost._count.replies + 1,
+            },
+          } as any);
+        }
+      }
+
       setContent("");
       setPollEnabled(false);
       setPollOptions(["", ""]);
       setMediaUrls([]);
       window.localStorage.removeItem(draftKey);
+
+      return { prevForYou, prevFollowing, prevPost };
+    },
+    onError: (err, newPost, context) => {
+      // Rollback
+      if (context?.prevForYou) {
+        utils.post.getAll.setData({ tab: "for-you" }, context.prevForYou);
+      }
+      if (context?.prevFollowing) {
+        utils.post.getAll.setData({ tab: "following" }, context.prevFollowing);
+      }
+      if (parentId && context?.prevPost) {
+        utils.post.getPost.setData({ id: parentId }, context.prevPost);
+      }
+      setContent(newPost.content ?? "");
+      setMediaUrls(newPost.mediaUrls ?? []);
+    },
+    onSettled: async () => {
+      await utils.post.getAll.invalidate();
+      if (parentId) {
+        await utils.post.getPost.invalidate({ id: parentId });
+      }
     },
   });
 
