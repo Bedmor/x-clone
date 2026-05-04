@@ -29,6 +29,23 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html,
+body {
+  min-width: 320px;
+  overscroll-behavior-y: none;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+a,
+button {
+  touch-action: manipulation;
+}
+
 html[data-theme="light"] body {
   background: #f7f7f4;
   color: #111827;

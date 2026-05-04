@@ -106,7 +106,7 @@ export function MobileNav({
   return (
     <>
       <header
-        className="sticky top-0 z-40 border-b border-white/15 bg-black/95 px-3 py-2 backdrop-blur md:hidden"
+        className="sticky top-0 z-40 border-b border-white/15 bg-black/95 px-3 pt-[env(safe-area-inset-top)] pb-2 backdrop-blur md:hidden"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -166,7 +166,7 @@ export function MobileNav({
       {/* Drawer */}
       <div
         ref={drawerRef}
-        className={`fixed top-0 left-0 z-50 h-screen w-64 transform bg-black transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed top-0 left-0 z-50 h-[100dvh] w-64 transform bg-black transition-transform duration-300 ease-in-out md:hidden ${
           isDrawerOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         onTouchStart={handleTouchStart}

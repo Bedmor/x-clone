@@ -41,7 +41,7 @@ export function BottomNav({ session }: { session: Session | null }) {
   const badgeText = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
-    <div className="fixed right-0 bottom-0 left-0 z-50 flex h-16 w-full items-center justify-around border-t border-white/20 bg-black md:hidden">
+    <div className="fixed right-0 bottom-0 left-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] w-full items-start justify-around border-t border-white/20 bg-black pt-2 md:hidden">
       <Link href="/" className={linkClass(pathname === "/")}>
         <Home
           className={iconClass(pathname === "/")}

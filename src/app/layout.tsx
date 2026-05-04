@@ -36,14 +36,14 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${schibstedGrotesk.variable}`}>
-      <body className="bg-black text-white">
+      <body className="min-h-[100dvh] overflow-x-hidden bg-black text-white antialiased">
         <ThemeInitializer />
         <SessionProvider session={session}>
           <TRPCReactProvider>
-            <div className="flex h-screen justify-center">
-              <div className="flex w-full max-w-7xl">
+            <div className="flex min-h-[100dvh] justify-center">
+              <div className="flex min-h-[100dvh] w-full max-w-7xl">
                 <Sidebar session={session} isAdmin={isAdmin} />
-                <main className="flex-1 pb-16 md:border-r md:border-white/20 md:pb-0">
+                <main className="min-h-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:border-r md:border-white/20 md:pb-0">
                   <MobileNav session={session} isAdmin={isAdmin} />
                   {children}
                 </main>

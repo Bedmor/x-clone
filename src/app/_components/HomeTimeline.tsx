@@ -11,12 +11,12 @@ export function HomeTimeline({ isSignedIn }: { isSignedIn: boolean }) {
   const [tab, setTab] = useState<"for-you" | "following">("for-you");
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl gap-6 px-3 lg:px-5">
+    <div className="mx-auto flex w-full max-w-6xl gap-4 px-3 lg:gap-6 lg:px-5">
       <div className="min-w-0 flex-1 lg:max-w-2xl">
         <div className="flex border-b border-white/20">
           <button
             onClick={() => setTab("for-you")}
-            className={`flex-1 p-4 text-center font-bold transition-colors hover:bg-white/10 ${
+            className={`flex-1 px-3 py-4 text-center font-bold transition-colors hover:bg-white/10 sm:px-4 ${
               tab === "for-you"
                 ? "border-b-4 border-blue-500 text-white"
                 : "text-gray-500"
@@ -26,7 +26,7 @@ export function HomeTimeline({ isSignedIn }: { isSignedIn: boolean }) {
           </button>
           <button
             onClick={() => setTab("following")}
-            className={`flex-1 p-4 text-center font-bold transition-colors hover:bg-white/10 ${
+            className={`flex-1 px-3 py-4 text-center font-bold transition-colors hover:bg-white/10 sm:px-4 ${
               tab === "following"
                 ? "border-b-4 border-blue-500 text-white"
                 : "text-gray-500"
