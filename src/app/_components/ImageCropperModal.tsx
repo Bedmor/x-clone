@@ -7,7 +7,7 @@ import { RotateCcw, RotateCw } from "lucide-react";
 
 export function ImageCropperModal({
   imageUrl,
-  aspect,
+  aspect: initialAspect,
   onCropComplete,
   onCancel,
 }: {
@@ -20,6 +20,7 @@ export function ImageCropperModal({
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [aspectRatio, setAspectRatio] = useState(initialAspect);
 
   const onCropCompleteCallback = useCallback(
     (croppedArea: Area, croppedAreaPixels: Area) => {
@@ -55,58 +56,77 @@ export function ImageCropperModal({
             crop={crop}
             zoom={zoom}
             rotation={rotation}
-            aspect={aspect}
+            aspect={aspectRatio}
             onCropChange={setCrop}
             onCropComplete={onCropCompleteCallback}
             onZoomChange={setZoom}
           />
         </div>
-        <div className="flex items-center justify-between border-t border-white/20 p-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col border-t border-white/20 p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <label className="text-sm text-gray-400">Boyut:</label>
             <input
               type="range"
-              value={zoom}
-              min={1}
-              max={3}
+              value={aspectRatio}
+              min={0.5}
+              max={2}
               step={0.1}
-              aria-labelledby="Zoom"
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-40"
+              aria-label="Crop aspect ratio"
+              onChange={(e) => setAspectRatio(Number(e.target.value))}
+              className="w-32"
             />
+            <span className="text-sm text-gray-400">
+              {aspectRatio.toFixed(1)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-gray-400">Zoom:</label>
+              <input
+                type="range"
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.1}
+                aria-label="Zoom"
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-32"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRotation((current) => current - 90)}
+                  className="rounded-full border border-white/20 p-2 hover:bg-white/10"
+                  aria-label="Rotate left"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRotation((current) => current + 90)}
+                  className="rounded-full border border-white/20 p-2 hover:bg-white/10"
+                  aria-label="Rotate right"
+                >
+                  <RotateCw className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setRotation((current) => current - 90)}
-                className="rounded-full border border-white/20 p-2 hover:bg-white/10"
-                aria-label="Rotate left"
+                onClick={onCancel}
+                className="rounded-full border border-white/20 px-4 py-2 font-bold hover:bg-white/10"
               >
-                <RotateCcw className="h-4 w-4" />
+                Cancel
               </button>
               <button
                 type="button"
-                onClick={() => setRotation((current) => current + 90)}
-                className="rounded-full border border-white/20 p-2 hover:bg-white/10"
-                aria-label="Rotate right"
+                onClick={createCrop}
+                className="rounded-full bg-white px-4 py-2 font-bold text-black hover:bg-gray-200"
               >
-                <RotateCw className="h-4 w-4" />
+                Apply
               </button>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-full border border-white/20 px-4 py-2 font-bold hover:bg-white/10"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={createCrop}
-              className="rounded-full bg-white px-4 py-2 font-bold text-black hover:bg-gray-200"
-            >
-              Apply
-            </button>
           </div>
         </div>
       </div>

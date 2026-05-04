@@ -92,6 +92,19 @@ export default function ChatPage() {
   const [groupTitleDraft, setGroupTitleDraft] = useState("");
   const [memberQuery, setMemberQuery] = useState("");
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const gestureRef = useRef<{
+    messageId: string | null;
+    startX: number;
+    startY: number;
+    longPressTimer: ReturnType<typeof setTimeout> | null;
+    longPressTriggered: boolean;
+  }>({
+    messageId: null,
+    startX: 0,
+    startY: 0,
+    longPressTimer: null,
+    longPressTriggered: false,
+  });
 
   // New states
   const [isUploading, setIsUploading] = useState(false);
@@ -782,6 +795,98 @@ export default function ChatPage() {
     );
   };
 
+  const clearGestureTimer = () => {
+    if (gestureRef.current.longPressTimer) {
+      clearTimeout(gestureRef.current.longPressTimer);
+      gestureRef.current.longPressTimer = null;
+    }
+  };
+
+  const handleMessageTouchStart = (
+    messageId: string,
+    event: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    if (window.innerWidth >= 768) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    if (!touch) return;
+
+    gestureRef.current.messageId = messageId;
+    gestureRef.current.startX = touch.clientX;
+    gestureRef.current.startY = touch.clientY;
+    gestureRef.current.longPressTriggered = false;
+    clearGestureTimer();
+
+    gestureRef.current.longPressTimer = setTimeout(() => {
+      if (gestureRef.current.messageId === messageId) {
+        gestureRef.current.longPressTriggered = true;
+        handleOpenReactionPicker(messageId);
+      }
+    }, 450);
+  };
+
+  const handleMessageTouchMove = (
+    messageId: string,
+    event: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    if (gestureRef.current.messageId !== messageId) return;
+
+    const touch = event.touches[0];
+    if (!touch) return;
+
+    const deltaX = touch.clientX - gestureRef.current.startX;
+    const deltaY = touch.clientY - gestureRef.current.startY;
+
+    if (Math.abs(deltaX) > 12 || Math.abs(deltaY) > 12) {
+      clearGestureTimer();
+    }
+  };
+
+  const handleMessageTouchEnd = (
+    messageId: string,
+    isMe: boolean,
+    event: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    if (gestureRef.current.messageId !== messageId) return;
+
+    const touch = event.changedTouches[0];
+    clearGestureTimer();
+
+    if (!touch || gestureRef.current.longPressTriggered) {
+      gestureRef.current.messageId = null;
+      gestureRef.current.longPressTriggered = false;
+      return;
+    }
+
+    const deltaX = touch.clientX - gestureRef.current.startX;
+    const deltaY = touch.clientY - gestureRef.current.startY;
+    const isHorizontalSwipe =
+      Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY);
+    const shouldReply = isMe ? deltaX < -50 : deltaX > 50;
+
+    if (isHorizontalSwipe && shouldReply) {
+      const message = messages.find((item) => item.id === messageId);
+      if (message) {
+        setReplyingTo(message);
+      }
+    }
+
+    gestureRef.current.messageId = null;
+    gestureRef.current.longPressTriggered = false;
+  };
+
+  const handleMessageTouchCancel = (messageId: string) => {
+    if (gestureRef.current.messageId !== messageId) return;
+
+    clearGestureTimer();
+    gestureRef.current.messageId = null;
+    gestureRef.current.longPressTriggered = false;
+  };
+
+  useEffect(() => () => clearGestureTimer(), []);
+
   const handleSelectReaction = (messageId: string, emoji: string) => {
     toggleReactionMutation.mutate({ messageId, emoji });
     setReactionPickerMessageId(null);
@@ -1112,7 +1217,24 @@ export default function ChatPage() {
                           isMe ? "justify-end" : "justify-start"
                         }`}
                       >
-                        <div className="relative max-w-[70%]">
+                        <div
+                          className="relative max-w-[70%] touch-pan-y"
+                          onTouchStart={(event) =>
+                            handleMessageTouchStart(message.id, event)
+                          }
+                          onTouchMove={(event) =>
+                            handleMessageTouchMove(message.id, event)
+                          }
+                          onTouchEnd={(event) =>
+                            handleMessageTouchEnd(message.id, isMe, event)
+                          }
+                          onTouchCancel={() =>
+                            handleMessageTouchCancel(message.id)
+                          }
+                          onDoubleClick={() =>
+                            handleOpenReactionPicker(message.id)
+                          }
+                        >
                           {messageActions}
                           <div
                             className={`rounded-2xl px-4 py-2 ${

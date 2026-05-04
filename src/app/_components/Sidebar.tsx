@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { Session } from "next-auth";
 import {
   Home,
@@ -26,6 +29,30 @@ export function Sidebar({
   const userName =
     typeof session?.user.name === "string" ? session.user.name : null;
   const userId = typeof session?.user.id === "string" ? session.user.id : "";
+  const pathname = usePathname();
+
+  const isActive = (href: string) => pathname === href;
+
+  const isOwnProfileActive = pathname === `/profile/${userId}`;
+
+  const navClass = (active: boolean) =>
+    `flex items-center gap-4 rounded-full p-3 text-xl transition ${
+      active ? "text-white" : "text-gray-400 hover:bg-white/10 hover:text-white"
+    }`;
+
+  const iconClass = (active: boolean) =>
+    `h-7 w-7 transition ${active ? "text-white" : "text-white"}`;
+
+  const activeIconProps = (active: boolean, filled: boolean) =>
+    filled
+      ? {
+          fill: active ? "currentColor" : "none",
+          strokeWidth: 1.75,
+        }
+      : {
+          fill: "none",
+          strokeWidth: active ? 2.5 : 2,
+        };
 
   return (
     <div className="hidden h-full w-64 flex-col border-r border-white/20 p-4 md:flex">
@@ -36,24 +63,24 @@ export function Sidebar({
       <nav className="flex flex-col gap-4">
         <Link
           href="/"
-          className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+          className={navClass(isActive("/"))}
         >
-          <Home className="h-7 w-7" />
+          <Home className={iconClass(isActive("/"))} {...activeIconProps(isActive("/"), true)} />
           <span>Ana Sayfa</span>
         </Link>
         <Link
           href="/explore"
-          className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+          className={navClass(isActive("/explore"))}
         >
-          <Search className="h-7 w-7" />
+          <Search className={iconClass(isActive("/explore"))} {...activeIconProps(isActive("/explore"), false)} />
           <span>Keşfet</span>
         </Link>
         {session && (
           <Link
             href="/bookmarks"
-            className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+            className={navClass(isActive("/bookmarks"))}
           >
-            <Bookmark className="h-7 w-7" />
+            <Bookmark className={iconClass(isActive("/bookmarks"))} {...activeIconProps(isActive("/bookmarks"), true)} />
             <span>Yer İşaretleri</span>
           </Link>
         )}
@@ -61,39 +88,39 @@ export function Sidebar({
           <>
             <Link
               href="/notifications"
-              className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+              className={navClass(isActive("/notifications"))}
             >
-              <Bell className="h-7 w-7" />
+              <Bell className={iconClass(isActive("/notifications"))} {...activeIconProps(isActive("/notifications"), true)} />
               <span>Bildirimler</span>
             </Link>
             {isAdmin && (
               <Link
                 href="/admin/reports"
-                className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+                className={navClass(isActive("/admin/reports"))}
               >
-                <Flag className="h-7 w-7" />
+                <Flag className={iconClass(isActive("/admin/reports"))} {...activeIconProps(isActive("/admin/reports"), true)} />
                 <span>Raporlar</span>
               </Link>
             )}
             <Link
               href="/chat"
-              className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+              className={navClass(isActive("/chat"))}
             >
-              <Mail className="h-7 w-7" />
+              <Mail className={iconClass(isActive("/chat"))} {...activeIconProps(isActive("/chat"), true)} />
               <span>Mesajlar</span>
             </Link>
             <Link
               href={`/profile/${userId}`}
-              className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+              className={navClass(isOwnProfileActive)}
             >
-              <User className="h-7 w-7" />
+              <User className={iconClass(isOwnProfileActive)} {...activeIconProps(isOwnProfileActive, false)} />
               <span>Profil</span>
             </Link>
             <Link
               href="/settings"
-              className="flex items-center gap-4 rounded-full p-3 text-xl hover:bg-white/10"
+              className={navClass(isActive("/settings"))}
             >
-              <Settings className="h-7 w-7" />
+              <Settings className={iconClass(isActive("/settings"))} {...activeIconProps(isActive("/settings"), false)} />
               <span>Ayarlar</span>
             </Link>
           </>

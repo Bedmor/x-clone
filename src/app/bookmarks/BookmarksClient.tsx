@@ -22,7 +22,7 @@ export function BookmarksClient() {
 
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 z-10 border-b border-white/20 bg-black/50 p-4 backdrop-blur">
+      <div className="sticky top-0 z-10 hidden border-b border-white/20 bg-black/50 p-4 backdrop-blur md:block">
         <div className="flex items-center gap-2 text-sm tracking-[0.2em] text-gray-400 uppercase">
           <Bookmark className="h-4 w-4" />
           Kaydedilenler

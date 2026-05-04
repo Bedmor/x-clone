@@ -17,6 +17,18 @@ export const notificationRouter = createTRPCRouter({
     });
   }),
 
+  markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+    return ctx.db.notification.updateMany({
+      where: {
+        userId: ctx.session.user.id,
+        read: false,
+      },
+      data: {
+        read: true,
+      },
+    });
+  }),
+
   markRead: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {

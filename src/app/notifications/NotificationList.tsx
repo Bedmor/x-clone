@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 import { UserAvatar } from "~/app/_components/UserAvatar";
@@ -10,8 +11,33 @@ import { useNotificationPreferences } from "~/app/settings/NotificationPreferenc
 type NotificationType = RouterOutputs["notification"]["getAll"][number];
 
 export function NotificationList() {
+  const utils = api.useUtils();
   const [notifications] = api.notification.getAll.useSuspenseQuery();
   const prefs = useNotificationPreferences();
+  const hasMarkedRead = useRef(false);
+
+  const markAllReadMutation = api.notification.markAllRead.useMutation({
+    onSuccess: () => {
+      void utils.notification.getAll.invalidate();
+    },
+  });
+
+  useEffect(() => {
+    if (hasMarkedRead.current) {
+      return;
+    }
+
+    const unreadNotifications = notifications.filter(
+      (notification) => !notification.read,
+    );
+    if (unreadNotifications.length === 0) {
+      hasMarkedRead.current = true;
+      return;
+    }
+
+    hasMarkedRead.current = true;
+    markAllReadMutation.mutate();
+  }, [markAllReadMutation, notifications]);
 
   const visibleNotifications = notifications.filter((notification) => {
     switch (notification.type) {
