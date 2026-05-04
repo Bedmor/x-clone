@@ -4,6 +4,11 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 
 import { useSession } from "next-auth/react";
+import {
+  buildOptimisticPost,
+  mergeOptimisticReply,
+  type FeedPost,
+} from "./optimisticPost";
 
 export function ReplyModal({
   postId,
@@ -22,68 +27,35 @@ export function ReplyModal({
       await utils.post.getAll.cancel();
       await utils.post.getPost.cancel({ id: postId });
 
-      const prevForYou = utils.post.getAll.getData({ tab: "for-you" });
-      const prevFollowing = utils.post.getAll.getData({ tab: "following" });
       const prevPost = utils.post.getPost.getData({ id: postId });
 
-      const optimisticReply = {
+      const optimisticAuthor: FeedPost["createdBy"] = {
+        id: session?.user?.id ?? "temp",
+        name: session?.user?.name ?? "User",
+        username: session?.user?.email ?? "user",
+        image: session?.user?.image ?? null,
+      };
+
+      const optimisticReply = buildOptimisticPost({
         id: -Date.now(),
         content: newReply.content ?? null,
         mediaUrls: [],
-        createdAt: new Date(),
         parentId: postId,
-        isLiked: false,
-        isBookmarked: false,
-        isReposted: false,
-        isPinned: false,
-        createdBy: {
-          id: session?.user?.id ?? "temp",
-          name: session?.user?.name ?? "User",
-          username: session?.user?.email ?? "user",
-          image: session?.user?.image ?? null,
-        },
-        _count: {
-          likes: 0,
-          replies: 0,
-          reposts: 0,
-          quotes: 0,
-        },
-        repostOf: null,
-      } as any;
+        author: optimisticAuthor,
+      });
 
-      if (prevForYou) {
-        utils.post.getAll.setData({ tab: "for-you" }, (data: any) => {
-          if (!data) return data;
-          return [optimisticReply, ...data];
-        });
-      }
-      if (prevFollowing) {
-        utils.post.getAll.setData({ tab: "following" }, (data: any) => {
-          if (!data) return data;
-          return [optimisticReply, ...data];
-        });
-      }
       if (prevPost) {
-        utils.post.getPost.setData({ id: postId }, {
-          ...prevPost,
-          replies: [optimisticReply, ...(prevPost.replies || [])],
-          _count: {
-            ...prevPost._count,
-            replies: prevPost._count.replies + 1,
-          },
-        } as any);
+        utils.post.getPost.setData({ id: postId }, (post) =>
+          mergeOptimisticReply(post, optimisticReply),
+        );
       }
 
       setContent("");
       onClose();
 
-      return { prevForYou, prevFollowing, prevPost };
+      return { prevPost };
     },
-    onError: (err, newReply, context) => {
-      if (context?.prevForYou)
-        utils.post.getAll.setData({ tab: "for-you" }, context.prevForYou);
-      if (context?.prevFollowing)
-        utils.post.getAll.setData({ tab: "following" }, context.prevFollowing);
+    onError: (_error, newReply, context) => {
       if (context?.prevPost)
         utils.post.getPost.setData({ id: postId }, context.prevPost);
       setContent(newReply.content ?? "");

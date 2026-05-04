@@ -8,6 +8,12 @@ import { BarChart3, ImagePlus, X } from "lucide-react";
 import { api } from "~/trpc/react";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
 import { useSession } from "next-auth/react";
+import {
+  buildOptimisticPost,
+  mergeOptimisticReply,
+  prependOptimisticPost,
+  type FeedPost,
+} from "./optimisticPost";
 
 const ImageCropperModal = dynamic(
   () => import("./ImageCropperModal").then((mod) => mod.ImageCropperModal),
@@ -85,73 +91,43 @@ export function CreatePost({
         await utils.post.getPost.cancel({ id: parentId });
       }
 
-      const prevForYou = utils.post.getAll.getData({ tab: "for-you" });
-      const prevFollowing = utils.post.getAll.getData({ tab: "following" });
-      let prevPost: any;
+      const optimisticAuthor: FeedPost["createdBy"] = {
+        id: session?.user?.id ?? "temp",
+        name: session?.user?.name ?? "User",
+        username: session?.user?.email ?? "user",
+        image: session?.user?.image ?? null,
+      };
 
-      const optimisticPost = {
+      const optimisticPost = buildOptimisticPost({
         id: -Date.now(),
         content: newPost.content ?? null,
         mediaUrls: newPost.mediaUrls ?? [],
-        createdAt: new Date(),
         parentId: parentId ?? null,
-        isLiked: false,
-        isBookmarked: false,
-        isReposted: false,
-        isPinned: false,
-        createdBy: {
-          id: session?.user?.id ?? "temp",
-          name: session?.user?.name ?? "User",
-          username: session?.user?.name ?? "user",
-          image: session?.user?.image ?? null,
-        },
-        _count: {
-          likes: 0,
-          replies: 0,
-          reposts: 0,
-          quotes: 0,
-        },
-        repostOf: null,
-        poll:
-          newPost.pollOptions?.length && newPost.pollOptions[0] !== ""
-            ? {
-                totalVotes: 0,
-                options: newPost.pollOptions.map((opt, i) => ({
-                  id: -i,
-                  text: opt,
-                  voteCount: 0,
-                  hasVoted: false,
-                })),
-              }
-            : null,
-      } as any;
+        author: optimisticAuthor,
+        pollOptions: newPost.pollOptions,
+      });
 
-      if (prevForYou) {
-        utils.post.getAll.setData({ tab: "for-you" }, (data: any) => {
-          if (!data) return data;
-          return [optimisticPost, ...(Array.isArray(data) ? data : [])];
-        });
-      }
+      const prevForYou = parentId
+        ? undefined
+        : utils.post.getAll.getData({ tab: "for-you" });
+      const prevFollowing = parentId
+        ? undefined
+        : utils.post.getAll.getData({ tab: "following" });
+      const prevPost = parentId
+        ? utils.post.getPost.getData({ id: parentId })
+        : undefined;
 
-      if (prevFollowing) {
-        utils.post.getAll.setData({ tab: "following" }, (data: any) => {
-          if (!data) return data;
-          return [optimisticPost, ...(Array.isArray(data) ? data : [])];
-        });
-      }
-
-      if (parentId) {
-        prevPost = utils.post.getPost.getData({ id: parentId });
-        if (prevPost) {
-          utils.post.getPost.setData({ id: parentId }, {
-            ...prevPost,
-            replies: [optimisticPost, ...(prevPost.replies || [])],
-            _count: {
-              ...prevPost._count,
-              replies: prevPost._count.replies + 1,
-            },
-          } as any);
-        }
+      if (!parentId) {
+        utils.post.getAll.setData({ tab: "for-you" }, (posts) =>
+          prependOptimisticPost(posts, optimisticPost),
+        );
+        utils.post.getAll.setData({ tab: "following" }, (posts) =>
+          prependOptimisticPost(posts, optimisticPost),
+        );
+      } else {
+        utils.post.getPost.setData({ id: parentId }, (post) =>
+          mergeOptimisticReply(post, optimisticPost),
+        );
       }
 
       setContent("");
@@ -162,12 +138,11 @@ export function CreatePost({
 
       return { prevForYou, prevFollowing, prevPost };
     },
-    onError: (err, newPost, context) => {
-      // Rollback
-      if (context?.prevForYou) {
+    onError: (_error, newPost, context) => {
+      if (!parentId && context?.prevForYou) {
         utils.post.getAll.setData({ tab: "for-you" }, context.prevForYou);
       }
-      if (context?.prevFollowing) {
+      if (!parentId && context?.prevFollowing) {
         utils.post.getAll.setData({ tab: "following" }, context.prevFollowing);
       }
       if (parentId && context?.prevPost) {

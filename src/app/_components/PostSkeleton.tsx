@@ -1,5 +1,3 @@
-import { Logo } from "./Logo";
-
 export function PostSkeleton() {
   return (
     <div className="animate-pulse border-b border-white/20 p-4">

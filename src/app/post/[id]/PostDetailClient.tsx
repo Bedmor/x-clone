@@ -2,9 +2,11 @@
 
 import { api } from "~/trpc/react";
 import { CreatePost } from "~/app/_components/CreatePost";
-import { PostItem, type PostWithUser } from "~/app/_components/PostItem";
+import { PostItem } from "~/app/_components/PostItem";
 import Link from "next/link";
+import type { RouterOutputs } from "~/trpc/react";
 
+type PostDetail = NonNullable<RouterOutputs["post"]["getPost"]>;
 type ThreadPost = {
   id: number;
   content: string | null;
@@ -21,7 +23,7 @@ function ThreadCard({ post }: { post: ThreadPost }) {
   return (
     <div className="relative border-b border-white/20 px-4 pt-4 pb-2">
       {/* V line connecting thread pieces */}
-      <div className="absolute top-14 bottom-0 left-[2.25rem] z-0 w-0.5 bg-gray-800"></div>
+      <div className="absolute top-14 bottom-0 left-9 z-0 w-0.5 bg-gray-800"></div>
 
       <div className="relative z-10 flex gap-3">
         <Link href={`/profile/${post.createdBy.id}`} className="shrink-0">
@@ -56,7 +58,7 @@ function ThreadCard({ post }: { post: ThreadPost }) {
   );
 }
 
-function ThreadTrail({ post }: { post: any }) {
+function ThreadTrail({ post }: { post: PostDetail }) {
   if (!post.parent) return null;
 
   const ancestors: ThreadPost[] = [];
@@ -84,7 +86,7 @@ export function PostDetailClient({
   initialData,
 }: {
   postId: number;
-  initialData: any;
+  initialData: PostDetail;
 }) {
   const { data: post } = api.post.getPost.useQuery(
     { id: postId },
@@ -99,7 +101,7 @@ export function PostDetailClient({
     <>
       <ThreadTrail post={post} />
 
-      <PostItem post={post as any} />
+      <PostItem post={post} />
 
       <div className="border-b border-white/20 p-4 text-xl font-bold">
         Yanıtlar
@@ -107,8 +109,8 @@ export function PostDetailClient({
 
       <CreatePost parentId={postId} placeholder="Yanıtınızı yazın" />
 
-      {post.replies?.map((reply: any) => (
-        <PostItem key={reply.id} post={reply as any} />
+      {post.replies.map((reply) => (
+        <PostItem key={reply.id} post={reply} />
       ))}
     </>
   );

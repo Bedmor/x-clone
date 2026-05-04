@@ -4,6 +4,11 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 
 import { useSession } from "next-auth/react";
+import {
+  buildOptimisticPost,
+  prependOptimisticPost,
+  type FeedPost,
+} from "./optimisticPost";
 
 export function QuoteModal({
   postId,
@@ -26,50 +31,35 @@ export function QuoteModal({
       const prevFollowing = utils.post.getAll.getData({ tab: "following" });
       const prevPost = utils.post.getPost.getData({ id: postId });
 
-      const optimisticQuote = {
+      const optimisticAuthor: FeedPost["createdBy"] = {
+        id: session?.user?.id ?? "temp",
+        name: session?.user?.name ?? "User",
+        username: session?.user?.email ?? "user",
+        image: session?.user?.image ?? null,
+      };
+
+      const optimisticQuote = buildOptimisticPost({
         id: -Date.now(),
         content: newQuote.content ?? null,
         mediaUrls: [],
-        createdAt: new Date(),
         parentId: null,
-        isLiked: false,
-        isBookmarked: false,
-        isReposted: false,
-        isPinned: false,
-        createdBy: {
-          id: session?.user?.id ?? "temp",
-          name: session?.user?.name ?? "User",
-          username: session?.user?.email ?? "user",
-          image: session?.user?.image ?? null,
-        },
-        _count: {
-          likes: 0,
-          replies: 0,
-          reposts: 0,
-          quotes: 0,
-        },
+        author: optimisticAuthor,
         repostOf: prevPost ?? null,
-      } as any;
+      });
 
-      if (prevForYou) {
-        utils.post.getAll.setData({ tab: "for-you" }, (data: any) => {
-          if (!data) return data;
-          return [optimisticQuote, ...data];
-        });
-      }
-      if (prevFollowing) {
-        utils.post.getAll.setData({ tab: "following" }, (data: any) => {
-          if (!data) return data;
-          return [optimisticQuote, ...data];
-        });
-      }
+      utils.post.getAll.setData({ tab: "for-you" }, (posts) =>
+        prependOptimisticPost(posts, optimisticQuote),
+      );
+      utils.post.getAll.setData({ tab: "following" }, (posts) =>
+        prependOptimisticPost(posts, optimisticQuote),
+      );
 
       setContent("");
       onClose();
 
       return { prevForYou, prevFollowing, prevPost };
     },
-    onError: (err, newQuote, context) => {
+    onError: (_error, newQuote, context) => {
       if (context?.prevForYou)
         utils.post.getAll.setData({ tab: "for-you" }, context.prevForYou);
       if (context?.prevFollowing)
