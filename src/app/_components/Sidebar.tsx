@@ -61,26 +61,26 @@ export function Sidebar({
         <span>Flowzest</span>
       </div>
       <nav className="flex flex-col gap-4">
-        <Link
-          href="/"
-          className={navClass(isActive("/"))}
-        >
-          <Home className={iconClass(isActive("/"))} {...activeIconProps(isActive("/"), true)} />
+        <Link href="/" className={navClass(isActive("/"))}>
+          <Home
+            className={iconClass(isActive("/"))}
+            {...activeIconProps(isActive("/"), true)}
+          />
           <span>Ana Sayfa</span>
         </Link>
-        <Link
-          href="/explore"
-          className={navClass(isActive("/explore"))}
-        >
-          <Search className={iconClass(isActive("/explore"))} {...activeIconProps(isActive("/explore"), false)} />
+        <Link href="/explore" className={navClass(isActive("/explore"))}>
+          <Search
+            className={iconClass(isActive("/explore"))}
+            {...activeIconProps(isActive("/explore"), false)}
+          />
           <span>Keşfet</span>
         </Link>
         {session && (
-          <Link
-            href="/bookmarks"
-            className={navClass(isActive("/bookmarks"))}
-          >
-            <Bookmark className={iconClass(isActive("/bookmarks"))} {...activeIconProps(isActive("/bookmarks"), true)} />
+          <Link href="/bookmarks" className={navClass(isActive("/bookmarks"))}>
+            <Bookmark
+              className={iconClass(isActive("/bookmarks"))}
+              {...activeIconProps(isActive("/bookmarks"), true)}
+            />
             <span>Yer İşaretleri</span>
           </Link>
         )}
@@ -90,7 +90,10 @@ export function Sidebar({
               href="/notifications"
               className={navClass(isActive("/notifications"))}
             >
-              <Bell className={iconClass(isActive("/notifications"))} {...activeIconProps(isActive("/notifications"), true)} />
+              <Bell
+                className={iconClass(isActive("/notifications"))}
+                {...activeIconProps(isActive("/notifications"), true)}
+              />
               <span>Bildirimler</span>
             </Link>
             {isAdmin && (
@@ -98,29 +101,35 @@ export function Sidebar({
                 href="/admin/reports"
                 className={navClass(isActive("/admin/reports"))}
               >
-                <Flag className={iconClass(isActive("/admin/reports"))} {...activeIconProps(isActive("/admin/reports"), true)} />
+                <Flag
+                  className={iconClass(isActive("/admin/reports"))}
+                  {...activeIconProps(isActive("/admin/reports"), true)}
+                />
                 <span>Raporlar</span>
               </Link>
             )}
-            <Link
-              href="/chat"
-              className={navClass(isActive("/chat"))}
-            >
-              <Mail className={iconClass(isActive("/chat"))} {...activeIconProps(isActive("/chat"), true)} />
+            <Link href="/chat" className={navClass(isActive("/chat"))}>
+              <Mail
+                className={iconClass(isActive("/chat"))}
+                {...activeIconProps(isActive("/chat"), true)}
+              />
               <span>Mesajlar</span>
             </Link>
             <Link
               href={`/profile/${userId}`}
               className={navClass(isOwnProfileActive)}
             >
-              <User className={iconClass(isOwnProfileActive)} {...activeIconProps(isOwnProfileActive, false)} />
+              <User
+                className={iconClass(isOwnProfileActive)}
+                {...activeIconProps(isOwnProfileActive, false)}
+              />
               <span>Profil</span>
             </Link>
-            <Link
-              href="/settings"
-              className={navClass(isActive("/settings"))}
-            >
-              <Settings className={iconClass(isActive("/settings"))} {...activeIconProps(isActive("/settings"), false)} />
+            <Link href="/settings" className={navClass(isActive("/settings"))}>
+              <Settings
+                className={iconClass(isActive("/settings"))}
+                {...activeIconProps(isActive("/settings"), false)}
+              />
               <span>Ayarlar</span>
             </Link>
           </>

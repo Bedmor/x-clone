@@ -43,10 +43,16 @@ export function BottomNav({ session }: { session: Session | null }) {
   return (
     <div className="fixed right-0 bottom-0 left-0 z-50 flex h-16 w-full items-center justify-around border-t border-white/20 bg-black md:hidden">
       <Link href="/" className={linkClass(pathname === "/")}>
-        <Home className={iconClass(pathname === "/")} {...activeIconProps(pathname === "/", true)} />
+        <Home
+          className={iconClass(pathname === "/")}
+          {...activeIconProps(pathname === "/", true)}
+        />
       </Link>
       <Link href="/explore" className={linkClass(pathname === "/explore")}>
-        <Search className={iconClass(pathname === "/explore")} {...activeIconProps(pathname === "/explore", false)} />
+        <Search
+          className={iconClass(pathname === "/explore")}
+          {...activeIconProps(pathname === "/explore", false)}
+        />
       </Link>
       {session && (
         <>
@@ -54,7 +60,10 @@ export function BottomNav({ session }: { session: Session | null }) {
             href="/notifications"
             className={linkClass(pathname === "/notifications")}
           >
-            <Bell className={iconClass(pathname === "/notifications")} {...activeIconProps(pathname === "/notifications", true)} />
+            <Bell
+              className={iconClass(pathname === "/notifications")}
+              {...activeIconProps(pathname === "/notifications", true)}
+            />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-5 rounded-full bg-blue-500 px-1.5 py-0.5 text-center text-[10px] leading-none font-bold text-white">
                 {badgeText}
@@ -62,7 +71,10 @@ export function BottomNav({ session }: { session: Session | null }) {
             )}
           </Link>
           <Link href="/chat" className={linkClass(pathname === "/chat")}>
-            <Mail className={iconClass(pathname === "/chat")} {...activeIconProps(pathname === "/chat", true)} />
+            <Mail
+              className={iconClass(pathname === "/chat")}
+              {...activeIconProps(pathname === "/chat", true)}
+            />
           </Link>
         </>
       )}
