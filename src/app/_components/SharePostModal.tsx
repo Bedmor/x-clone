@@ -218,9 +218,9 @@ export function SharePostModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0b0f14] shadow-2xl shadow-black/50">
-        <div className="border-b border-white/10 bg-white/5 p-5">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-end bg-black/70 p-4 backdrop-blur-sm sm:justify-center">
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[28px] border border-white/10 bg-[#0b0f14] shadow-2xl shadow-black/50 sm:rounded-[28px]">
+        <div className="shrink-0 border-b border-white/10 bg-white/5 p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="text-xs tracking-[0.28em] text-gray-400 uppercase">

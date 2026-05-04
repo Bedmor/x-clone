@@ -263,19 +263,25 @@ export function CreatePost({
       <div className="mt-2 flex justify-end">
         <button
           type="button"
+          aria-label={pollEnabled ? "Anketi kaldır" : "Anket ekle"}
           onClick={() => setPollEnabled((current) => !current)}
-          className={`mr-auto flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold ${
+          className={`group flex items-center justify-center rounded-full p-2.5 transition ${
             pollEnabled
-              ? "border-blue-500 bg-blue-500/10 text-blue-400"
-              : "border-white/10 hover:bg-white/10"
+              ? "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"
+              : "text-blue-500 hover:bg-blue-500/10"
           }`}
         >
-          <BarChart3 className="h-4 w-4" />
-          {pollEnabled ? "Anket açık" : "Anket ekle"}
+          <BarChart3 className="h-5 w-5" />
         </button>
-        <label className="mr-auto ml-2 flex cursor-pointer items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/10">
-          <ImagePlus className="h-4 w-4" />
-          <span>{isUploadingMedia ? "Yükleniyor..." : "Medya ekle"}</span>
+        <label
+          aria-label="Medya ekle"
+          className="group ml-1 flex cursor-pointer items-center justify-center rounded-full p-2.5 text-blue-500 transition hover:bg-blue-500/10"
+        >
+          {isUploadingMedia ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+          ) : (
+            <ImagePlus className="h-5 w-5" />
+          )}
           <input
             type="file"
             accept="image/*,video/mp4,video/webm,video/quicktime"
@@ -303,9 +309,15 @@ export function CreatePost({
               pollOptions.map((option) => option.trim()).filter(Boolean)
                 .length < 2)
           }
-          className="rounded-full bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
+          className="ml-auto rounded-full bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
         >
-          {createPost.isPending ? "Paylaşılıyor..." : "Paylaş"}
+          {createPost.isPending ? (
+            <div className="flex h-5 items-center justify-center">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            </div>
+          ) : (
+            "Paylaş"
+          )}
         </button>
       </div>
 

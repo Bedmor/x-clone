@@ -83,8 +83,8 @@ export function EditProfileModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/20 bg-black p-4">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-end bg-black/50 p-4 backdrop-blur-sm sm:justify-center">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-white/20 bg-black p-4 sm:rounded-xl">
         <div className="mb-4 flex justify-between">
           <h2 className="text-xl font-bold">Profili Düzenle</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">

@@ -32,8 +32,8 @@ export function QuoteModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/20 bg-black p-4">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-end bg-black/50 p-4 backdrop-blur-sm sm:justify-center">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-white/20 bg-black p-4 sm:rounded-xl">
         <div className="mb-4 flex justify-between">
           <h2 className="text-xl font-bold">Alıntıla</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
@@ -55,7 +55,13 @@ export function QuoteModal({
               disabled={createQuote.isPending || !content.trim()}
               className="rounded-full bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
             >
-              {createQuote.isPending ? "Paylaşılıyor..." : "Paylaş"}
+              {createQuote.isPending ? (
+                <div className="flex h-5 items-center justify-center">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                </div>
+              ) : (
+                "Paylaş"
+              )}
             </button>
           </div>
         </form>
