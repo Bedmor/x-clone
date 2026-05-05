@@ -1,5 +1,6 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "../../../../generated/prisma";
 
 import {
@@ -828,6 +829,76 @@ export const userRouter = createTRPCRouter({
         where: { id: ctx.session.user.id },
         data: { password: hashedPassword },
       });
+    }),
+
+  deleteAccount: protectedProcedure
+    .input(
+      z.object({
+        password: z.string().optional(),
+        confirmation: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: {
+          id: true,
+          password: true,
+          image: true,
+          headerImage: true,
+        },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      if (input.confirmation.trim() !== "HESABIMI SIL") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: 'Devam etmek için onay alanına "HESABIMI SIL" yazın.',
+        });
+      }
+
+      if (user.password) {
+        if (!input.password) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Hesabınızı silmek için şifrenizi girin.",
+          });
+        }
+
+        const isPasswordValid = await bcrypt.compare(input.password, user.password);
+        if (!isPasswordValid) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Şifre hatalı.",
+          });
+        }
+      }
+
+      const posts = await ctx.db.post.findMany({
+        where: { createdById: user.id },
+        select: { mediaUrls: true },
+      });
+
+      const postMediaUrls = posts.flatMap((post) => post.mediaUrls);
+      const profileMediaUrls = [user.image, user.headerImage].filter(
+        (url): url is string => Boolean(url),
+      );
+
+      await ctx.db.$transaction(async (tx) => {
+        await tx.post.deleteMany({ where: { createdById: user.id } });
+        await tx.user.delete({ where: { id: user.id } });
+      });
+
+      await Promise.allSettled(
+        [...postMediaUrls, ...profileMediaUrls].map((url) =>
+          deleteR2ObjectByUrl(url),
+        ),
+      );
+
+      return { success: true };
     }),
 
   blockUser: protectedProcedure

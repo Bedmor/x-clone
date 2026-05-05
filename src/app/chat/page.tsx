@@ -17,8 +17,10 @@ import {
   ArrowLeft,
   SmilePlus,
   Reply,
+  Plus,
 } from "lucide-react";
 import Image from "next/image";
+import EmojiPicker, { Theme, type EmojiClickData } from "emoji-picker-react";
 import { type inferRouterOutputs } from "@trpc/server";
 import { type AppRouter } from "~/server/api/root";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
@@ -34,8 +36,6 @@ const NewChatModal = dynamic(
   () => import("./NewChatModal").then((mod) => mod.NewChatModal),
   { ssr: false },
 );
-
-const REACTION_OPTIONS = ["👍", "❤️", "😂", "🔥", "👏"] as const;
 
 function getConversationDisplayName(
   conversation: Conversation | undefined,
@@ -112,6 +112,8 @@ export default function ChatPage() {
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showInputMenu, setShowInputMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const utils = api.useUtils();
 
@@ -915,7 +917,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden border-t border-white/20">
+    <div className="flex h-[calc(100dvh-4rem)] w-full overflow-hidden border-t border-white/20 md:h-dvh">
       {/* Conversations List */}
       <div
         className={`w-full border-r border-white/20 bg-black md:w-1/3 ${
@@ -1009,7 +1011,7 @@ export default function ChatPage() {
 
       {/* Chat Area */}
       <div
-        className={`flex w-full flex-col bg-black md:w-2/3 ${
+        className={`flex min-h-0 w-full min-w-0 flex-1 flex-col bg-black md:w-2/3 ${
           selectedConversationId ? "block" : "hidden md:flex"
         }`}
       >
@@ -1097,7 +1099,7 @@ export default function ChatPage() {
             {/* Messages */}
             <div
               ref={messagesContainerRef}
-              className="flex-1 overflow-y-auto p-4"
+              className="min-h-0 flex-1 overflow-y-auto p-4"
             >
               {hasNextPage && (
                 <div className="flex justify-center py-2">
@@ -1157,10 +1159,10 @@ export default function ChatPage() {
 
                     const messageActions = (
                       <div
-                        className={`absolute top-0 z-10 flex flex-col gap-1 transition-opacity duration-150 ${
+                        className={`absolute top-0 z-10 flex flex-col gap-2 transition-opacity duration-150 ${
                           isMe
-                            ? "left-0 -translate-x-full"
-                            : "right-0 translate-x-full"
+                            ? "left-0 -translate-x-[calc(100%+0.5rem)]"
+                            : "right-0 translate-x-[calc(100%+0.5rem)]"
                         } ${
                           reactionPickerMessageId === message.id
                             ? "pointer-events-auto opacity-100"
@@ -1169,22 +1171,19 @@ export default function ChatPage() {
                       >
                         {reactionPickerMessageId === message.id && (
                           <div
-                            className={`absolute bottom-full z-10 mb-2 flex gap-1 rounded-xl border border-white/20 bg-black p-1 ${
+                            className={`absolute bottom-full z-50 mb-2 ${
                               isMe ? "right-0" : "left-0"
                             }`}
                           >
-                            {REACTION_OPTIONS.map((emoji) => (
-                              <button
-                                key={emoji}
-                                type="button"
-                                onClick={() =>
-                                  handleSelectReaction(message.id, emoji)
-                                }
-                                className="rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-sm hover:bg-white/10"
-                              >
-                                {emoji}
-                              </button>
-                            ))}
+                            <EmojiPicker
+                              theme={Theme.DARK}
+                              onEmojiClick={(emojiData: EmojiClickData) => {
+                                handleSelectReaction(
+                                  message.id,
+                                  emojiData.emoji,
+                                );
+                              }}
+                            />
                           </div>
                         )}
 
@@ -1231,13 +1230,14 @@ export default function ChatPage() {
                           onTouchCancel={() =>
                             handleMessageTouchCancel(message.id)
                           }
-                          onDoubleClick={() =>
-                            handleOpenReactionPicker(message.id)
-                          }
+                          onDoubleClick={(e) => {
+                            e.preventDefault();
+                            handleOpenReactionPicker(message.id);
+                          }}
                         >
                           {messageActions}
                           <div
-                            className={`rounded-2xl px-4 py-2 ${
+                            className={`rounded-2xl px-4 py-2 select-none ${
                               isMe
                                 ? "bg-blue-500 text-white"
                                 : "bg-gray-800 text-white"
@@ -1296,11 +1296,31 @@ export default function ChatPage() {
                                 alt="Ek"
                                 width={300}
                                 height={200}
-                                className="mb-2 max-h-60 rounded-lg object-cover"
+                                className="mb-2 max-h-60 max-w-xs rounded-lg object-cover sm:max-w-sm"
                               />
                             ) : null}
                             {!sharedPost && message.content && (
-                              <p>{message.content}</p>
+                              <p className="whitespace-pre-wrap">
+                                {message.content
+                                  .split(/(https?:\/\/[^\s]+)/g)
+                                  .map((part, i) => {
+                                    if (part.startsWith("http")) {
+                                      return (
+                                        <a
+                                          key={i}
+                                          href={part}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-200 hover:underline"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {part}
+                                        </a>
+                                      );
+                                    }
+                                    return part;
+                                  })}
+                              </p>
                             )}
 
                             <div className="mt-2 flex flex-wrap gap-1">
@@ -1360,7 +1380,7 @@ export default function ChatPage() {
                   {/* Typing Indicator */}
                   {typingUsers.size > 0 && (
                     <div className="flex justify-start">
-                      <div className="rounded-2xl bg-gray-800 px-4 py-2 text-sm text-gray-400 italic">
+                      <div className="rounded-2x animate-pulse px-4 py-2 text-sm text-gray-400 italic">
                         Yazıyor...
                       </div>
                     </div>
@@ -1394,25 +1414,66 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2">
+              <div className="relative flex items-center gap-2">
+                {showInputMenu && (
+                  <div className="absolute bottom-full left-0 mb-2 flex flex-col gap-2 rounded-xl border border-white/20 bg-gray-900 p-2 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowInputMenu(false);
+                        fileInputRef.current?.click();
+                      }}
+                      className="flex items-center gap-2 rounded-lg p-2 text-sm whitespace-nowrap text-gray-200 hover:bg-white/10"
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <Loader2 className="animate-spin" size={18} />
+                      ) : (
+                        <ImageIcon size={18} />
+                      )}
+                      Medya Yükle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowInputMenu(false);
+                        setShowEmojiPicker((prev) => !prev);
+                      }}
+                      className="flex items-center gap-2 rounded-lg p-2 text-sm whitespace-nowrap text-gray-200 hover:bg-white/10"
+                    >
+                      <SmilePlus size={18} />
+                      Emoji Ekle
+                    </button>
+                  </div>
+                )}
+
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full left-0 z-50 mb-2 md:left-10">
+                    <EmojiPicker
+                      theme={Theme.DARK}
+                      onEmojiClick={(emojiData: EmojiClickData) => {
+                        setNewMessage((prev) => prev + emojiData.emoji);
+                      }}
+                    />
+                  </div>
+                )}
+
                 <input
                   type="file"
                   ref={fileInputRef}
                   className="hidden"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   onChange={handleFileUpload}
                 />
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    setShowEmojiPicker(false);
+                    setShowInputMenu((prev) => !prev);
+                  }}
                   className="p-2 text-blue-500 hover:text-blue-400"
-                  disabled={isUploading}
                 >
-                  {isUploading ? (
-                    <Loader2 className="animate-spin" size={20} />
-                  ) : (
-                    <ImageIcon size={20} />
-                  )}
+                  <Plus size={24} />
                 </button>
 
                 <input

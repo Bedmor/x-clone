@@ -77,10 +77,10 @@ export function ProfileFeed({
   return (
     <div>
       <div className="border-b border-white/20">
-        <div className="flex">
+        <div className="grid grid-cols-3">
           <button
             onClick={() => setTab("posts")}
-            className={`flex-1 p-4 text-center font-bold hover:bg-white/10 ${
+            className={`px-2 py-3 text-center text-sm font-bold hover:bg-white/10 sm:px-4 sm:py-4 sm:text-base ${
               tab === "posts"
                 ? "border-b-4 border-blue-500 text-white"
                 : "text-gray-500"
@@ -90,7 +90,7 @@ export function ProfileFeed({
           </button>
           <button
             onClick={() => setTab("replies")}
-            className={`flex-1 p-4 text-center font-bold hover:bg-white/10 ${
+            className={`px-2 py-3 text-center text-sm font-bold hover:bg-white/10 sm:px-4 sm:py-4 sm:text-base ${
               tab === "replies"
                 ? "border-b-4 border-blue-500 text-white"
                 : "text-gray-500"
@@ -100,7 +100,7 @@ export function ProfileFeed({
           </button>
           <button
             onClick={() => setTab("likes")}
-            className={`flex-1 p-4 text-center font-bold hover:bg-white/10 ${
+            className={`px-2 py-3 text-center text-sm font-bold hover:bg-white/10 sm:px-4 sm:py-4 sm:text-base ${
               tab === "likes"
                 ? "border-b-4 border-blue-500 text-white"
                 : "text-gray-500"

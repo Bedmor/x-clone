@@ -18,7 +18,7 @@ export function PrivacySettings() {
 
   if (isLoading || !data) {
     return (
-      <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:rounded-3xl">
         <h2 className="text-xl font-bold">Gizlilik</h2>
         <p className="text-sm text-gray-400">Gizlilik ayarları yükleniyor...</p>
       </div>
@@ -26,7 +26,7 @@ export function PrivacySettings() {
   }
 
   return (
-    <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+    <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:rounded-3xl">
       <div>
         <h2 className="text-xl font-bold">Gizlilik</h2>
         <p className="text-sm text-gray-400">
@@ -35,7 +35,7 @@ export function PrivacySettings() {
         </p>
       </div>
 
-      <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/20 p-3">
+      <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-white/10 bg-black/20 p-3 sm:items-center">
         <div>
           <p className="font-semibold">Özel hesap</p>
           <p className="text-sm text-gray-400">
@@ -48,7 +48,7 @@ export function PrivacySettings() {
           onChange={(e) =>
             updatePrivacy.mutate({ isPrivate: e.target.checked })
           }
-          className="h-5 w-5"
+          className="mt-1 h-5 w-5 shrink-0 sm:mt-0"
         />
       </label>
 
@@ -66,7 +66,7 @@ export function PrivacySettings() {
                 | "NO_ONE",
             })
           }
-          className="w-full rounded-xl border border-white/20 bg-black p-2"
+          className="h-11 w-full rounded-xl border border-white/20 bg-black px-3"
         >
           <option value="EVERYONE">Herkes</option>
           <option value="FOLLOWING">Takip ettikleriniz</option>

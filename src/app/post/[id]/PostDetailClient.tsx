@@ -21,7 +21,7 @@ type ThreadPost = {
 
 function ThreadCard({ post }: { post: ThreadPost }) {
   return (
-    <div className="relative border-b border-white/20 px-4 pt-4 pb-2">
+    <div className="relative border-b border-white/20 px-3 pt-4 pb-2 sm:px-4">
       {/* V line connecting thread pieces */}
       <div className="absolute top-14 bottom-0 left-9 z-0 w-0.5 bg-gray-800"></div>
 
@@ -31,11 +31,11 @@ function ThreadCard({ post }: { post: ThreadPost }) {
             <span className="sr-only">{post.createdBy.name}</span>
           </div>
         </Link>
-        <div className="flex-1 pb-4">
-          <div className="flex items-center gap-1 overflow-hidden text-sm whitespace-nowrap">
+        <div className="min-w-0 flex-1 pb-4">
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1 overflow-hidden text-sm">
             <Link
               href={`/profile/${post.createdBy.id}`}
-              className="truncate font-semibold text-white hover:underline"
+              className="max-w-full truncate font-semibold text-white hover:underline"
             >
               {post.createdBy.name ??
                 post.createdBy.username ??
@@ -73,7 +73,9 @@ function ThreadTrail({ post }: { post: PostDetail }) {
 
   return (
     <div className="border-b border-white/20">
-      <div className="p-4 text-sm font-semibold text-gray-400">Konuşma</div>
+      <div className="px-3 py-3 text-sm font-semibold text-gray-400 sm:px-4">
+        Konuşma
+      </div>
       {ancestors.map((ancestor) => (
         <ThreadCard key={ancestor.id} post={ancestor} />
       ))}
@@ -103,7 +105,7 @@ export function PostDetailClient({
 
       <PostItem post={post} />
 
-      <div className="border-b border-white/20 p-4 text-xl font-bold">
+      <div className="border-b border-white/20 px-3 py-4 text-lg font-bold sm:px-4 sm:text-xl">
         Yanıtlar
       </div>
 

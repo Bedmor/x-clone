@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { useSession } from "next-auth/react";
+import { CustomVideoPlayer } from "./CustomVideoPlayer";
 
 const ReplyModal = dynamic(
   () => import("./ReplyModal").then((mod) => mod.ReplyModal),
@@ -299,7 +300,7 @@ export const PostItem = React.memo(function PostItem({
 
   return (
     <>
-      <div className="border-b border-white/20 p-4 hover:bg-white/5">
+      <div className="border-b border-white/20 px-3 py-4 transition hover:bg-white/5 sm:px-4">
         {isSimpleRepost && (
           <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
             <Repeat className="h-4 w-4" />
@@ -322,22 +323,22 @@ export const PostItem = React.memo(function PostItem({
               className="h-10 w-10 transition hover:scale-105"
             />
           </Link>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <Link
                 href={`/profile/${dp.createdBy.id}`}
-                className="font-bold hover:underline"
+                className="max-w-full truncate font-bold hover:underline"
               >
                 {dp.createdBy.name ?? "Bilinmeyen"}
               </Link>
               <Link
                 href={`/profile/${dp.createdBy.id}`}
-                className="text-gray-500 hover:underline"
+                className="max-w-full truncate text-gray-500 hover:underline"
               >
                 @{dp.createdBy.username ?? dp.createdBy.id}
               </Link>
               <span className="text-gray-500">·</span>
-              <span className="text-gray-500">
+              <span className="text-xs text-gray-500 sm:text-sm">
                 {new Date(dp.createdAt).toLocaleDateString()}
               </span>
             </div>
@@ -346,7 +347,7 @@ export const PostItem = React.memo(function PostItem({
               className="mt-1 block whitespace-pre-wrap"
             >
               {dp.content
-                ?.split(/(@\w+|#\w+)/g)
+                ?.split(/(@\w+|#\w+|https?:\/\/[^\s]+)/g)
                 .map((part: string, i: number) => {
                   if (part.startsWith("@")) {
                     const username = part.slice(1);
@@ -358,6 +359,7 @@ export const PostItem = React.memo(function PostItem({
                         className="cursor-pointer text-blue-400 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           handleInnerLinkClick(`/profile/${username}`);
                         }}
                         onKeyDown={(e) =>
@@ -378,6 +380,7 @@ export const PostItem = React.memo(function PostItem({
                         className="cursor-pointer text-cyan-400 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           handleInnerLinkClick(`/hashtag/${tag}`);
                         }}
                         onKeyDown={(e) =>
@@ -385,6 +388,23 @@ export const PostItem = React.memo(function PostItem({
                         }
                       >
                         {part}
+                      </span>
+                    );
+                  }
+                  if (part.startsWith("http")) {
+                    return (
+                      <span
+                        key={i}
+                        role="link"
+                        tabIndex={0}
+                        className="cursor-pointer text-blue-500 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          window.open(part, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        {part.length > 30 ? part.slice(0, 30) + "..." : part}
                       </span>
                     );
                   }
@@ -399,13 +419,12 @@ export const PostItem = React.memo(function PostItem({
                   return (
                     <div
                       key={url}
-                      className="overflow-hidden rounded-xl border border-white/20"
+                      className="overflow-hidden rounded-xl border border-white/20 bg-black/30"
                     >
                       {isVideo ? (
-                        <video
+                        <CustomVideoPlayer
                           src={url}
-                          className="h-56 w-full object-cover"
-                          controls
+                          className="h-64 w-full sm:h-56"
                         />
                       ) : (
                         <button
@@ -504,11 +523,76 @@ export const PostItem = React.memo(function PostItem({
                     · {new Date(dp.repostOf.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="mt-1 text-sm">{dp.repostOf.content}</div>
+                <div className="mt-1 text-sm whitespace-pre-wrap">
+                  {dp.repostOf.content
+                    ?.split(/(@\w+|#\w+|https?:\/\/[^\s]+)/g)
+                    .map((part: string, i: number) => {
+                      if (part.startsWith("@")) {
+                        const username = part.slice(1);
+                        return (
+                          <span
+                            key={i}
+                            role="link"
+                            tabIndex={0}
+                            className="cursor-pointer text-blue-400 hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleInnerLinkClick(`/profile/${username}`);
+                            }}
+                          >
+                            {part}
+                          </span>
+                        );
+                      }
+                      if (part.startsWith("#")) {
+                        const tag = part.slice(1);
+                        return (
+                          <span
+                            key={i}
+                            role="link"
+                            tabIndex={0}
+                            className="cursor-pointer text-cyan-400 hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleInnerLinkClick(`/hashtag/${tag}`);
+                            }}
+                          >
+                            {part}
+                          </span>
+                        );
+                      }
+                      if (part.startsWith("http")) {
+                        return (
+                          <span
+                            key={i}
+                            role="link"
+                            tabIndex={0}
+                            className="cursor-pointer text-blue-500 hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              window.open(
+                                part,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }}
+                          >
+                            {part.length > 30
+                              ? part.slice(0, 30) + "..."
+                              : part}
+                          </span>
+                        );
+                      }
+                      return part;
+                    })}
+                </div>
               </Link>
             )}
 
-            <div className="mt-3 flex gap-4 text-gray-500">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-gray-500">
               <button
                 onClick={() => toggleLike.mutate({ postId: dp.id })}
                 className={`flex items-center gap-1 hover:text-red-500 ${

@@ -73,7 +73,7 @@ export function NotificationPreferences() {
   ] as const;
 
   return (
-    <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+    <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:rounded-3xl">
       <div>
         <h2 className="text-xl font-bold">Bildirim tercihleri</h2>
         <p className="text-sm text-gray-400">
@@ -84,9 +84,9 @@ export function NotificationPreferences() {
         {options.map((option) => (
           <label
             key={option.key}
-            className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-4 py-3"
+            className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3.5"
           >
-            <span>{option.label}</span>
+            <span className="text-sm sm:text-base">{option.label}</span>
             <input
               type="checkbox"
               checked={prefs[option.key]}
