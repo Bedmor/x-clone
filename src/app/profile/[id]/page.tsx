@@ -11,7 +11,7 @@ import { ProfileStats } from "./ProfileStats";
 import { MessageButton } from "./MessageButton";
 import { BlockButton } from "./BlockButton";
 import { ReportUserButton } from "./ReportUserButton";
-import { SuggestedUsers } from "~/app/_components/SuggestedUsers";
+import { linkifyText } from "~/app/_lib/linkify";
 
 export default async function ProfilePage({
   params,
@@ -79,7 +79,42 @@ export default async function ProfilePage({
             </div>
             <h2 className="mt-3 text-2xl font-bold">{user.name}</h2>
             <p className="text-gray-500">@{user.username ?? user.id}</p>
-            {user.bio && <p className="mt-2 whitespace-pre-wrap">{user.bio}</p>}
+            {user.bio && (
+              <p className="mt-2 whitespace-pre-wrap">
+                {linkifyText(
+                  user.bio,
+                  (url, i) => (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-blue-400 hover:underline"
+                    >
+                      {url}
+                    </a>
+                  ),
+                  (username, i) => (
+                    <a
+                      key={i}
+                      href={`/profile/${username}`}
+                      className="text-blue-400 hover:underline"
+                    >
+                      @{username}
+                    </a>
+                  ),
+                  (tag, i) => (
+                    <a
+                      key={i}
+                      href={`/hashtag/${tag}`}
+                      className="text-cyan-400 hover:underline"
+                    >
+                      #{tag}
+                    </a>
+                  ),
+                )}
+              </p>
+            )}
             <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-500">
               {user.location && <span>📍 {user.location}</span>}
               {user.website && (

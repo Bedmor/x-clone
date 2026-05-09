@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
 import type * as Ably from "ably";
@@ -20,11 +20,19 @@ import {
   Plus,
 } from "lucide-react";
 import Image from "next/image";
-import EmojiPicker, { Theme, type EmojiClickData } from "emoji-picker-react";
+import { Theme } from "emoji-picker-react";
+import type { EmojiClickData } from "emoji-picker-react";
+
+// Lazy-load the emoji picker to avoid pulling the picker bundle into initial JS
+const EmojiPicker = dynamic(
+  () => import("emoji-picker-react").then((mod) => mod.default ?? mod),
+  { ssr: false },
+);
 import { type inferRouterOutputs } from "@trpc/server";
 import { type AppRouter } from "~/server/api/root";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
 import { parseSharedPostMessage } from "../_components/shareMessage";
+import { linkifyText } from "~/app/_lib/linkify";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
@@ -75,6 +83,7 @@ function getConversationDisplayName(
 
 export default function ChatPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialConversationId = searchParams.get("conversationId");
 
@@ -114,6 +123,20 @@ export default function ChatPage() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showInputMenu, setShowInputMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const handleChatLinkClick = (href: string) => {
+    router.push(href);
+  };
+
+  const handleChatLinkKeyDown = (
+    event: React.KeyboardEvent<HTMLSpanElement>,
+    href: string,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      router.push(href);
+    }
+  };
 
   const utils = api.useUtils();
 
@@ -1301,25 +1324,63 @@ export default function ChatPage() {
                             ) : null}
                             {!sharedPost && message.content && (
                               <p className="whitespace-pre-wrap">
-                                {message.content
-                                  .split(/(https?:\/\/[^\s]+)/g)
-                                  .map((part, i) => {
-                                    if (part.startsWith("http")) {
-                                      return (
-                                        <a
-                                          key={i}
-                                          href={part}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-blue-200 hover:underline"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          {part}
-                                        </a>
-                                      );
-                                    }
-                                    return part;
-                                  })}
+                                {linkifyText(
+                                  message.content,
+                                  (url, i) => (
+                                    <a
+                                      key={i}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-200 hover:underline"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {url}
+                                    </a>
+                                  ),
+                                  (username, i) => (
+                                    <span
+                                      key={i}
+                                      role="link"
+                                      tabIndex={0}
+                                      className="cursor-pointer text-blue-200 hover:underline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleChatLinkClick(
+                                          `/profile/${username}`,
+                                        );
+                                      }}
+                                      onKeyDown={(e) =>
+                                        handleChatLinkKeyDown(
+                                          e,
+                                          `/profile/${username}`,
+                                        )
+                                      }
+                                    >
+                                      @{username}
+                                    </span>
+                                  ),
+                                  (tag, i) => (
+                                    <span
+                                      key={i}
+                                      role="link"
+                                      tabIndex={0}
+                                      className="cursor-pointer text-cyan-300 hover:underline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleChatLinkClick(`/hashtag/${tag}`);
+                                      }}
+                                      onKeyDown={(e) =>
+                                        handleChatLinkKeyDown(
+                                          e,
+                                          `/hashtag/${tag}`,
+                                        )
+                                      }
+                                    >
+                                      #{tag}
+                                    </span>
+                                  ),
+                                )}
                               </p>
                             )}
 

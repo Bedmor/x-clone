@@ -2,15 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
-const reportReasonSchema = z.enum([
-  "SPAM",
-  "HARASSMENT",
-  "HATE",
-  "VIOLENCE",
-  "NSFW",
-  "MISINFORMATION",
-  "OTHER",
-]);
+import { reportReasonSchema } from "./reportHelpers";
 
 export const reportRouter = createTRPCRouter({
   create: protectedProcedure

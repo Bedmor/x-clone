@@ -22,7 +22,10 @@
     "lint:fix": "next lint --fix",
     "preview": "next build && next start",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postbuild": "node scripts/precompress.mjs",
+    "compress:static": "node scripts/precompress.mjs",
+    "list:router-sizes": "node scripts/list-router-sizes.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",

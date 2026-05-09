@@ -21,7 +21,12 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { useSession } from "next-auth/react";
-import { CustomVideoPlayer } from "./CustomVideoPlayer";
+// Lazy-load the heavy video player on the client to reduce initial bundle size
+const CustomVideoPlayer = dynamic(
+  () => import("./CustomVideoPlayer").then((mod) => mod.CustomVideoPlayer),
+  { ssr: false },
+);
+import { linkifyText } from "~/app/_lib/linkify";
 
 const ReplyModal = dynamic(
   () => import("./ReplyModal").then((mod) => mod.ReplyModal),
@@ -346,70 +351,66 @@ export const PostItem = React.memo(function PostItem({
               href={`/post/${dp.id}`}
               className="mt-1 block whitespace-pre-wrap"
             >
-              {dp.content
-                ?.split(/(@\w+|#\w+|https?:\/\/[^\s]+)/g)
-                .map((part: string, i: number) => {
-                  if (part.startsWith("@")) {
-                    const username = part.slice(1);
-                    return (
-                      <span
-                        key={i}
-                        role="link"
-                        tabIndex={0}
-                        className="cursor-pointer text-blue-400 hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleInnerLinkClick(`/profile/${username}`);
-                        }}
-                        onKeyDown={(e) =>
-                          handleInnerLinkKeyDown(e, `/profile/${username}`)
-                        }
-                      >
-                        {part}
-                      </span>
-                    );
-                  }
-                  if (part.startsWith("#")) {
-                    const tag = part.slice(1);
-                    return (
-                      <span
-                        key={i}
-                        role="link"
-                        tabIndex={0}
-                        className="cursor-pointer text-cyan-400 hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleInnerLinkClick(`/hashtag/${tag}`);
-                        }}
-                        onKeyDown={(e) =>
-                          handleInnerLinkKeyDown(e, `/hashtag/${tag}`)
-                        }
-                      >
-                        {part}
-                      </span>
-                    );
-                  }
-                  if (part.startsWith("http")) {
-                    return (
-                      <span
-                        key={i}
-                        role="link"
-                        tabIndex={0}
-                        className="cursor-pointer text-blue-500 hover:underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          window.open(part, "_blank", "noopener,noreferrer");
-                        }}
-                      >
-                        {part.length > 30 ? part.slice(0, 30) + "..." : part}
-                      </span>
-                    );
-                  }
-                  return part;
-                })}
+              {linkifyText(
+                dp.content ?? "",
+                (url, i) => (
+                  <span
+                    key={i}
+                    role="link"
+                    tabIndex={0}
+                    className="cursor-pointer text-blue-500 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                  >
+                    {url.length > 30 ? `${url.slice(0, 30)}...` : url}
+                  </span>
+                ),
+                (username, i) => (
+                  <span
+                    key={i}
+                    role="link"
+                    tabIndex={0}
+                    className="cursor-pointer text-blue-400 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleInnerLinkClick(`/profile/${username}`);
+                    }}
+                    onKeyDown={(e) =>
+                      handleInnerLinkKeyDown(e, `/profile/${username}`)
+                    }
+                  >
+                    @{username}
+                  </span>
+                ),
+                (tag, i) => (
+                  <span
+                    key={i}
+                    role="link"
+                    tabIndex={0}
+                    className="cursor-pointer text-cyan-400 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleInnerLinkClick(`/hashtag/${tag}`);
+                    }}
+                    onKeyDown={(e) =>
+                      handleInnerLinkKeyDown(e, `/hashtag/${tag}`)
+                    }
+                  >
+                    #{tag}
+                  </span>
+                ),
+              )}
             </Link>
 
             {mediaUrls.length > 0 && (
@@ -524,70 +525,60 @@ export const PostItem = React.memo(function PostItem({
                   </span>
                 </div>
                 <div className="mt-1 text-sm whitespace-pre-wrap">
-                  {dp.repostOf.content
-                    ?.split(/(@\w+|#\w+|https?:\/\/[^\s]+)/g)
-                    .map((part: string, i: number) => {
-                      if (part.startsWith("@")) {
-                        const username = part.slice(1);
-                        return (
-                          <span
-                            key={i}
-                            role="link"
-                            tabIndex={0}
-                            className="cursor-pointer text-blue-400 hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleInnerLinkClick(`/profile/${username}`);
-                            }}
-                          >
-                            {part}
-                          </span>
-                        );
-                      }
-                      if (part.startsWith("#")) {
-                        const tag = part.slice(1);
-                        return (
-                          <span
-                            key={i}
-                            role="link"
-                            tabIndex={0}
-                            className="cursor-pointer text-cyan-400 hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleInnerLinkClick(`/hashtag/${tag}`);
-                            }}
-                          >
-                            {part}
-                          </span>
-                        );
-                      }
-                      if (part.startsWith("http")) {
-                        return (
-                          <span
-                            key={i}
-                            role="link"
-                            tabIndex={0}
-                            className="cursor-pointer text-blue-500 hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              window.open(
-                                part,
-                                "_blank",
-                                "noopener,noreferrer",
-                              );
-                            }}
-                          >
-                            {part.length > 30
-                              ? part.slice(0, 30) + "..."
-                              : part}
-                          </span>
-                        );
-                      }
-                      return part;
-                    })}
+                  {linkifyText(
+                    dp.repostOf.content ?? "",
+                    (url, i) => (
+                      <span
+                        key={i}
+                        role="link"
+                        tabIndex={0}
+                        className="cursor-pointer text-blue-500 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            window.open(url, "_blank", "noopener,noreferrer");
+                          }
+                        }}
+                      >
+                        {url.length > 30 ? `${url.slice(0, 30)}...` : url}
+                      </span>
+                    ),
+                    (username, i) => (
+                      <span
+                        key={i}
+                        role="link"
+                        tabIndex={0}
+                        className="cursor-pointer text-blue-400 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleInnerLinkClick(`/profile/${username}`);
+                        }}
+                      >
+                        @{username}
+                      </span>
+                    ),
+                    (tag, i) => (
+                      <span
+                        key={i}
+                        role="link"
+                        tabIndex={0}
+                        className="cursor-pointer text-cyan-400 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleInnerLinkClick(`/hashtag/${tag}`);
+                        }}
+                      >
+                        #{tag}
+                      </span>
+                    ),
+                  )}
                 </div>
               </Link>
             )}

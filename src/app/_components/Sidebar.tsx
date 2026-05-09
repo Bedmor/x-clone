@@ -149,9 +149,7 @@ export function Sidebar({
                 <div className="truncate text-sm font-semibold">
                   {userName ?? "Kullanıcı"}
                 </div>
-                <div className="truncate text-xs text-gray-400">
-                  @{session.user.username ?? session.user.name ?? userId}
-                </div>
+                <div className="truncate text-xs text-gray-400">@{userId}</div>
               </div>
             </summary>
             <div className="mt-2">

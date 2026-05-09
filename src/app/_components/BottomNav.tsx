@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Session } from "next-auth";
 import { Bell, Mail, Search, Home } from "lucide-react";
@@ -9,52 +8,10 @@ import { api } from "~/trpc/react";
 
 export function BottomNav({ session }: { session: Session | null }) {
   const pathname = usePathname();
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollYRef = useRef(0);
-  const tickingRef = useRef(false);
   const { data: notifications = [] } = api.notification.getAll.useQuery(
     undefined,
     { enabled: Boolean(session) },
   );
-
-  useEffect(() => {
-    lastScrollYRef.current = window.scrollY;
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      if (tickingRef.current) {
-        return;
-      }
-
-      tickingRef.current = true;
-      window.requestAnimationFrame(() => {
-        const previousScrollY = lastScrollYRef.current;
-        const delta = currentScrollY - previousScrollY;
-
-        if (currentScrollY <= 12) {
-          setIsVisible(true);
-        } else if (delta > 8) {
-          setIsVisible(false);
-        } else if (delta < -8) {
-          setIsVisible(true);
-        }
-
-        lastScrollYRef.current = currentScrollY;
-        tickingRef.current = false;
-      });
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    setIsVisible(true);
-    lastScrollYRef.current = window.scrollY;
-  }, [pathname]);
 
   const unreadCount = notifications.filter(
     (notification) => !notification.read,
@@ -84,11 +41,7 @@ export function BottomNav({ session }: { session: Session | null }) {
   const badgeText = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
-    <div
-      className={`fixed right-0 bottom-0 left-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] w-full items-start justify-around border-t border-white/20 bg-black pt-2 transition-transform duration-300 ease-out md:hidden ${
-        isVisible ? "translate-y-0" : "translate-y-full"
-      }`}
-    >
+    <div className="fixed right-0 bottom-0 left-0 z-50 flex h-16 w-full items-center justify-around border-t border-white/20 bg-black md:hidden">
       <Link href="/" className={linkClass(pathname === "/")}>
         <Home
           className={iconClass(pathname === "/")}

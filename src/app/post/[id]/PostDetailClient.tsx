@@ -4,7 +4,9 @@ import { api } from "~/trpc/react";
 import { CreatePost } from "~/app/_components/CreatePost";
 import { PostItem } from "~/app/_components/PostItem";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { RouterOutputs } from "~/trpc/react";
+import { linkifyText } from "~/app/_lib/linkify";
 
 type PostDetail = NonNullable<RouterOutputs["post"]["getPost"]>;
 type ThreadPost = {
@@ -20,6 +22,8 @@ type ThreadPost = {
 };
 
 function ThreadCard({ post }: { post: ThreadPost }) {
+  const router = useRouter();
+
   return (
     <div className="relative border-b border-white/20 px-3 pt-4 pb-2 sm:px-4">
       {/* V line connecting thread pieces */}
@@ -50,7 +54,63 @@ function ThreadCard({ post }: { post: ThreadPost }) {
             href={`/post/${post.id}`}
             className="mt-1 block text-[15px] leading-normal whitespace-pre-wrap text-white"
           >
-            {post.content}
+            {linkifyText(
+              post.content ?? "",
+              (url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-blue-400 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {url}
+                </a>
+              ),
+              (username, i) => (
+                <span
+                  key={i}
+                  role="link"
+                  tabIndex={0}
+                  className="cursor-pointer text-blue-400 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`/profile/${username}`);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/profile/${username}`);
+                    }
+                  }}
+                >
+                  @{username}
+                </span>
+              ),
+              (tag, i) => (
+                <span
+                  key={i}
+                  role="link"
+                  tabIndex={0}
+                  className="cursor-pointer text-cyan-400 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`/hashtag/${tag}`);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/hashtag/${tag}`);
+                    }
+                  }}
+                >
+                  #{tag}
+                </span>
+              ),
+            )}
           </Link>
         </div>
       </div>
