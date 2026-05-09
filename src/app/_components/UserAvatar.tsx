@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { RemoteImage } from "./RemoteImage";
 
 export function UserAvatar({
   src,
@@ -19,14 +19,14 @@ export function UserAvatar({
       className={`relative overflow-hidden rounded-full bg-gray-500 ${className}`}
     >
       {src ? (
-        <Image
+        <RemoteImage
           src={src}
           alt={alt ?? "User avatar"}
           fill
           className="object-cover"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-700 via-slate-600 to-slate-800 text-sm font-bold text-white">
+        <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-700 via-slate-600 to-slate-800 text-sm font-bold text-white">
           {initial}
         </div>
       )}

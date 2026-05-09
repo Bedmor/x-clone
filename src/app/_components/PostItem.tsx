@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { api } from "~/trpc/react";
 import Link from "next/link";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +20,7 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { useSession } from "next-auth/react";
+import { RemoteImage } from "./RemoteImage";
 // Lazy-load the heavy video player on the client to reduce initial bundle size
 const CustomVideoPlayer = dynamic(
   () => import("./CustomVideoPlayer").then((mod) => mod.CustomVideoPlayer),
@@ -433,7 +433,7 @@ export const PostItem = React.memo(function PostItem({
                           className="block w-full cursor-zoom-in"
                           onClick={() => setActiveImageUrl(url)}
                         >
-                          <Image
+                          <RemoteImage
                             src={url}
                             alt="Gönderi medyası"
                             width={1024}
@@ -808,7 +808,7 @@ export const PostItem = React.memo(function PostItem({
           >
             Kapat
           </button>
-          <Image
+          <RemoteImage
             src={activeImageUrl}
             alt="Büyütülmüş gönderi görseli"
             width={1600}

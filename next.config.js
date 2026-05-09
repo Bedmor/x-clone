@@ -14,8 +14,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 const config = {
     // Let Next.js enable gzip compression where applicable
     compress: true,
+    allowedDevOrigins: ["192.168.1.8"],
     // Image optimization: prefer modern formats and reasonable device sizes
     images: {
+        unoptimized: true, // Disable Next.js image optimization to serve images directly from R2
         formats: ["image/avif", "image/webp"],
         deviceSizes: [320, 420, 768, 1024, 1280, 1600, 1920],
         remotePatterns: [

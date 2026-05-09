@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { Prisma } from "../../../../generated/prisma";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -13,9 +12,6 @@ import {
   postInclude,
   postFeedInclude,
   mapPost,
-  mapPoll,
-  hashtagPattern,
-  normalizeTag,
   visibilityWhere,
 } from "./postHelpers";
 import {

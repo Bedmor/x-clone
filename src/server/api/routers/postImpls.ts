@@ -1,6 +1,29 @@
-import { normalizeTag, postFeedInclude, mapPost, withQueryTiming, visibilityWhere, hashtagPattern } from "./postHelpers";
+import type { Prisma } from "../../../../generated/prisma";
+import type { createTRPCContext } from "~/server/api/trpc";
+import {
+  normalizeTag,
+  postFeedInclude,
+  mapPost,
+  withQueryTiming,
+  visibilityWhere,
+  hashtagPattern,
+  type MappedPost,
+  type MapPostInput,
+} from "./postHelpers";
 
-export async function getAllPosts(ctx: any, input: any) {
+type RouterContext = Awaited<ReturnType<typeof createTRPCContext>>;
+type TimelineTab = "for-you" | "following";
+type GetAllInput = { tab?: TimelineTab } | undefined;
+type SearchPostsInput = { query: string };
+type HashtagFeedInput = { tag: string };
+type TrendingInput = { limit?: number } | undefined;
+type SearchTagsInput = { query: string; limit?: number };
+type TrendingEntry = {
+  post: MappedPost;
+  score: number;
+};
+
+export async function getAllPosts(ctx: RouterContext, input: GetAllInput) {
   const tab = input?.tab ?? "for-you";
   const userId = ctx.session?.user?.id;
 
@@ -11,12 +34,12 @@ export async function getAllPosts(ctx: any, input: any) {
         OR: [{ blockerId: userId }, { blockedId: userId }],
       },
     });
-    blockedUserIds = blocks.map((b: any) =>
+    blockedUserIds = blocks.map((b) =>
       b.blockerId === userId ? b.blockedId : b.blockerId,
     );
   }
 
-  const whereClause: any = {
+  const whereClause: Prisma.PostWhereInput = {
     parentId: null,
     createdById: { notIn: blockedUserIds },
     AND: [visibilityWhere(userId)],
@@ -27,7 +50,7 @@ export async function getAllPosts(ctx: any, input: any) {
       where: { followerId: userId },
       select: { followingId: true },
     });
-    const followingIds = following.map((f: any) => f.followingId);
+    const followingIds = following.map((f) => f.followingId);
     whereClause.createdById = { in: followingIds, notIn: blockedUserIds };
   } else if (tab === "for-you") {
     const fourDaysAgo = new Date();
@@ -44,10 +67,13 @@ export async function getAllPosts(ctx: any, input: any) {
     }),
   );
 
-  return posts.map((post: any) => mapPost(post));
+  return posts.map((post) => mapPost(post as MapPostInput));
 }
 
-export async function searchPostsImpl(ctx: any, input: any) {
+export async function searchPostsImpl(
+  ctx: RouterContext,
+  input: SearchPostsInput,
+) {
   const userId = ctx.session?.user?.id;
   const blockedUserIds: string[] = [];
 
@@ -59,7 +85,7 @@ export async function searchPostsImpl(ctx: any, input: any) {
     });
 
     blockedUserIds.push(
-      ...blocks.map((block: any) =>
+      ...blocks.map((block) =>
         block.blockerId === userId ? block.blockedId : block.blockerId,
       ),
     );
@@ -94,10 +120,13 @@ export async function searchPostsImpl(ctx: any, input: any) {
     include: postFeedInclude(userId),
   });
 
-  return posts.map((post: any) => mapPost(post));
+  return posts.map((post) => mapPost(post as MapPostInput));
 }
 
-export async function getHashtagFeedImpl(ctx: any, input: any) {
+export async function getHashtagFeedImpl(
+  ctx: RouterContext,
+  input: HashtagFeedInput,
+) {
   const userId = ctx.session?.user?.id;
   const tag = normalizeTag(input.tag);
   const blockedUserIds: string[] = [];
@@ -110,7 +139,7 @@ export async function getHashtagFeedImpl(ctx: any, input: any) {
     });
 
     blockedUserIds.push(
-      ...blocks.map((block: any) =>
+      ...blocks.map((block) =>
         block.blockerId === userId ? block.blockedId : block.blockerId,
       ),
     );
@@ -135,10 +164,13 @@ export async function getHashtagFeedImpl(ctx: any, input: any) {
     include: postFeedInclude(userId),
   });
 
-  return posts.map((post: any) => mapPost(post));
+  return posts.map((post) => mapPost(post as MapPostInput));
 }
 
-export async function getTrendingTagsImpl(ctx: any, input: any) {
+export async function getTrendingTagsImpl(
+  ctx: RouterContext,
+  input: TrendingInput,
+) {
   const limit = input?.limit ?? 8;
   const userId = ctx.session?.user?.id;
   const since = new Date();
@@ -152,7 +184,7 @@ export async function getTrendingTagsImpl(ctx: any, input: any) {
       },
     });
     blockedUserIds.push(
-      ...blocks.map((block: any) =>
+      ...blocks.map((block) =>
         block.blockerId === userId ? block.blockedId : block.blockerId,
       ),
     );
@@ -192,7 +224,10 @@ export async function getTrendingTagsImpl(ctx: any, input: any) {
     .map(([tag, count]) => ({ tag, count }));
 }
 
-export async function getTrendingPostsImpl(ctx: any, input: any) {
+export async function getTrendingPostsImpl(
+  ctx: RouterContext,
+  input: TrendingInput,
+) {
   const userId = ctx.session?.user?.id;
   const limit = input?.limit ?? 6;
   const since = new Date();
@@ -206,7 +241,7 @@ export async function getTrendingPostsImpl(ctx: any, input: any) {
       },
     });
     blockedUserIds.push(
-      ...blocks.map((block: any) =>
+      ...blocks.map((block) =>
         block.blockerId === userId ? block.blockedId : block.blockerId,
       ),
     );
@@ -230,20 +265,24 @@ export async function getTrendingPostsImpl(ctx: any, input: any) {
     }),
   );
 
-  return posts
-    .map((post: any) => ({
-      post: mapPost(post),
-      score:
-        (post._count?.likes ?? 0) * 3 +
-        (post._count?.reposts ?? 0) * 2 +
-        (post._count?.replies ?? 0),
-    }))
-    .sort((a: any, b: any) => b.score - a.score)
+  const rankedPosts: TrendingEntry[] = posts.map((post) => ({
+    post: mapPost(post as MapPostInput),
+    score:
+      (post._count?.likes ?? 0) * 3 +
+      (post._count?.reposts ?? 0) * 2 +
+      (post._count?.replies ?? 0),
+  }));
+
+  return rankedPosts
+    .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(({ post }: any) => post);
+    .map(({ post }) => post);
 }
 
-export async function searchTagsImpl(ctx: any, input: any) {
+export async function searchTagsImpl(
+  ctx: RouterContext,
+  input: SearchTagsInput,
+) {
   const limit = input.limit ?? 12;
   const userId = ctx.session?.user?.id;
   const normalizedQuery = normalizeTag(input.query);
@@ -258,7 +297,7 @@ export async function searchTagsImpl(ctx: any, input: any) {
       },
     });
     blockedUserIds.push(
-      ...blocks.map((block: any) =>
+      ...blocks.map((block) =>
         block.blockerId === userId ? block.blockedId : block.blockerId,
       ),
     );

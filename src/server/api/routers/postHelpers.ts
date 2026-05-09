@@ -1,7 +1,7 @@
 import type { Prisma } from "../../../../generated/prisma";
 const slowQueryThresholdMs = Number(process.env.DB_SLOW_QUERY_MS ?? 200);
 
-export async function withQueryTiming(label: string, fn: () => Promise<any>) {
+export async function withQueryTiming<T>(label: string, fn: () => Promise<T>) {
   const startedAt = Date.now();
   const result = await fn();
   const durationMs = Date.now() - startedAt;
@@ -369,4 +369,6 @@ export function visibilityWhere(userId: string | undefined): Prisma.PostWhereInp
   };
 }
 
-export default {};
+const postHelpers = {};
+
+export default postHelpers;

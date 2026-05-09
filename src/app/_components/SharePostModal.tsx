@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 
 import { api } from "~/trpc/react";
 import { UserAvatar } from "./UserAvatar";
+import { RemoteImage } from "./RemoteImage";
 
 const SHARE_MESSAGE_PREFIX = "[POST_SHARE]";
 
@@ -280,7 +280,7 @@ export function SharePostModal({
                 {sharePreview.mediaUrls.length > 0 && (
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {sharePreview.mediaUrls.slice(0, 3).map((url) => (
-                      <Image
+                      <RemoteImage
                         key={url}
                         src={url}
                         alt="Gönderi medyası"

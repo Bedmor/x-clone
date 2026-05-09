@@ -12,6 +12,10 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const passwordMatch = password === confirmPassword;
+
   const router = useRouter();
 
   const register = api.user.register.useMutation({
@@ -72,10 +76,30 @@ export default function SignupPage() {
               placeholder="Şifrenizi girin"
             />
           </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm text-gray-500">Şifreyi doğrula</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className={`rounded border ${
+                passwordMatch ? "border-white/20" : "border-red-500"
+              } bg-black p-2 focus:outline-none`}
+              placeholder="Şifrenizi tekrar girin"
+            />
+            {!passwordMatch && (
+              <p className="text-sm text-red-500">Şifreler eşleşmiyor</p>
+            )}
+          </div>
           <button
             onClick={() => register.mutate({ name, email, username, password })}
             disabled={
-              register.isPending || !name || !email || !username || !password
+              register.isPending ||
+              !name ||
+              !email ||
+              !username ||
+              !password ||
+              !passwordMatch
             }
             className="w-full rounded-full bg-blue-500 py-3 font-bold text-white hover:bg-blue-600 disabled:opacity-50"
           >

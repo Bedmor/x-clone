@@ -10,4 +10,6 @@ export const reportReasonSchema = z.enum([
   "OTHER",
 ]);
 
-export default {};
+const reportHelpers = {};
+
+export default reportHelpers;

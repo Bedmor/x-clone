@@ -3,9 +3,9 @@
 import { useState, useRef } from "react";
 import { api } from "~/trpc/react";
 import { Camera } from "lucide-react";
-import Image from "next/image";
 import { ImageCropperModal } from "./ImageCropperModal";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
+import { RemoteImage } from "./RemoteImage";
 
 export function EditProfileModal({
   user,
@@ -31,6 +31,8 @@ export function EditProfileModal({
   const [image, setImage] = useState(user.image ?? "");
   const [headerImage, setHeaderImage] = useState(user.headerImage ?? "");
   const [isUploading, setIsUploading] = useState(false);
+  const [progressLabel, setProgressLabel] = useState<string | null>(null);
+  const [progressPercent, setProgressPercent] = useState<number | null>(null);
 
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [cropType, setCropType] = useState<"avatar" | "header" | null>(null);
@@ -57,11 +59,25 @@ export function EditProfileModal({
       let newHeaderImageUrl = headerImage;
 
       if (croppedAvatarFile) {
-        newImageUrl = await uploadToR2(croppedAvatarFile);
+        newImageUrl = await uploadToR2(croppedAvatarFile, {
+          onStatus: (s: string) => {
+            if (s === "converting") setProgressLabel("Dönüştürülüyor");
+            if (s === "uploading") setProgressLabel("Yükleniyor");
+            if (s === "done") setProgressLabel("Yüklendi");
+          },
+          onProgress: (p: number) => setProgressPercent(p),
+        });
       }
 
       if (croppedHeaderFile) {
-        newHeaderImageUrl = await uploadToR2(croppedHeaderFile);
+        newHeaderImageUrl = await uploadToR2(croppedHeaderFile, {
+          onStatus: (s: string) => {
+            if (s === "converting") setProgressLabel("Dönüştürülüyor");
+            if (s === "uploading") setProgressLabel("Yükleniyor");
+            if (s === "done") setProgressLabel("Yüklendi");
+          },
+          onProgress: (p: number) => setProgressPercent(p),
+        });
       }
 
       updateProfile.mutate({
@@ -77,6 +93,10 @@ export function EditProfileModal({
       alert("Görüntüler yüklenemedi");
     } finally {
       setIsUploading(false);
+      setTimeout(() => {
+        setProgressLabel(null);
+        setProgressPercent(null);
+      }, 600);
     }
   };
 
@@ -96,7 +116,7 @@ export function EditProfileModal({
             {/* Header Image */}
             <div className="relative h-32 w-full overflow-hidden bg-gray-800">
               {headerImage && (
-                <Image
+                <RemoteImage
                   src={headerImage}
                   alt="Başlık Önizlemesi"
                   fill
@@ -130,7 +150,7 @@ export function EditProfileModal({
             <div className="absolute -bottom-12 left-4">
               <div className="relative h-24 w-24 rounded-full border-4 border-black bg-gray-800">
                 {image && (
-                  <Image
+                  <RemoteImage
                     src={image}
                     alt="Profil Önizlemesi"
                     width={96}
@@ -208,15 +228,36 @@ export function EditProfileModal({
             />
           </div>
           <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={updateProfile.isPending || isUploading}
-              className="rounded-full bg-white px-4 py-2 font-bold text-black hover:bg-white/90 disabled:opacity-50"
-            >
-              {updateProfile.isPending || isUploading
-                ? "Kaydediliyor..."
-                : "Kaydet"}
-            </button>
+            <div className="flex items-center gap-3">
+              {isUploading && progressLabel && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-40">
+                    <div className="h-2 w-full rounded-full bg-white/10">
+                      <div
+                        className="h-2 rounded-full bg-blue-500"
+                        style={{ width: `${progressPercent ?? 0}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 text-xs text-gray-400">
+                      {progressLabel}
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    {progressPercent != null ? `${progressPercent}%` : "..."}
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={updateProfile.isPending || isUploading}
+                className="rounded-full bg-white px-4 py-2 font-bold text-black hover:bg-white/90 disabled:opacity-50"
+              >
+                {updateProfile.isPending || isUploading
+                  ? "Kaydediliyor..."
+                  : "Kaydet"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

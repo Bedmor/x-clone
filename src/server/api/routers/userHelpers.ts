@@ -130,4 +130,6 @@ export const mapUserPost = <T extends MapUserPostInput>(post: T) => ({
     : null,
 });
 
-export default {};
+  const userHelpers = {};
+
+  export default userHelpers;

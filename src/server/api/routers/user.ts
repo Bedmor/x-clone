@@ -1,7 +1,6 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { TRPCError } from "@trpc/server";
-import type { PrismaClient } from "../../../../generated/prisma";
 
 import {
   createTRPCRouter,

@@ -19,7 +19,6 @@ import {
   Reply,
   Plus,
 } from "lucide-react";
-import Image from "next/image";
 import { Theme } from "emoji-picker-react";
 import type { EmojiClickData } from "emoji-picker-react";
 
@@ -33,6 +32,7 @@ import { type AppRouter } from "~/server/api/root";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
 import { parseSharedPostMessage } from "../_components/shareMessage";
 import { linkifyText } from "~/app/_lib/linkify";
+import { RemoteImage } from "../_components/RemoteImage";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ChatMessage = RouterOutputs["chat"]["getMessages"]["messages"][number];
@@ -118,6 +118,12 @@ export default function ChatPage() {
   // New states
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [chatProgressLabel, setChatProgressLabel] = useState<string | null>(
+    null,
+  );
+  const [chatProgressPercent, setChatProgressPercent] = useState<number | null>(
+    null,
+  );
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -752,9 +758,18 @@ export default function ChatPage() {
 
     const file = e.target.files[0];
     setIsUploading(true);
+    setChatProgressLabel("Hazırlanıyor");
+    setChatProgressPercent(0);
 
     try {
-      const url = await uploadToR2(file);
+      const url = await uploadToR2(file, {
+        onStatus: (s: string) => {
+          if (s === "converting") setChatProgressLabel("Dönüştürülüyor");
+          if (s === "uploading") setChatProgressLabel("Yükleniyor");
+          if (s === "done") setChatProgressLabel("Yüklendi");
+        },
+        onProgress: (p: number) => setChatProgressPercent(p),
+      });
 
       await sendMessageMutation.mutateAsync({
         conversationId: selectedConversationId,
@@ -767,6 +782,10 @@ export default function ChatPage() {
       alert("Failed to upload image");
     } finally {
       setIsUploading(false);
+      setTimeout(() => {
+        setChatProgressLabel(null);
+        setChatProgressPercent(null);
+      }, 600);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -1301,7 +1320,7 @@ export default function ChatPage() {
                                     {sharedPost.mediaUrls
                                       .slice(0, 3)
                                       .map((url) => (
-                                        <Image
+                                        <RemoteImage
                                           key={url}
                                           src={url}
                                           alt="Paylaşılan gönderi medyası"
@@ -1314,7 +1333,7 @@ export default function ChatPage() {
                                 )}
                               </Link>
                             ) : message.attachmentUrl ? (
-                              <Image
+                              <RemoteImage
                                 src={message.attachmentUrl}
                                 alt="Ek"
                                 width={300}
@@ -1526,6 +1545,26 @@ export default function ChatPage() {
                   accept="image/*,video/*"
                   onChange={handleFileUpload}
                 />
+                {isUploading && chatProgressLabel && (
+                  <div className="mr-2 flex items-center space-x-3">
+                    <div className="w-36">
+                      <div className="h-2 w-full rounded-full bg-white/10">
+                        <div
+                          className="h-2 rounded-full bg-blue-500"
+                          style={{ width: `${chatProgressPercent ?? 0}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 text-xs text-gray-400">
+                        {chatProgressLabel}
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {chatProgressPercent != null
+                        ? `${chatProgressPercent}%`
+                        : "..."}
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => {

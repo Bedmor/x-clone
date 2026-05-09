@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { BarChart3, ImagePlus, X } from "lucide-react";
 import { api } from "~/trpc/react";
 import { uploadToR2 } from "~/app/_lib/uploadToR2";
@@ -14,6 +13,7 @@ import {
   prependOptimisticPost,
   type FeedPost,
 } from "./optimisticPost";
+import { RemoteImage } from "./RemoteImage";
 
 const ImageCropperModal = dynamic(
   () => import("./ImageCropperModal").then((mod) => mod.ImageCropperModal),
@@ -35,6 +35,8 @@ export function CreatePost({
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [progressLabel, setProgressLabel] = useState<string | null>(null);
+  const [progressPercent, setProgressPercent] = useState<number | null>(null);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [cropAspect, setCropAspect] = useState(1);
   const cropResolveRef = useRef<((file: File | null) => void) | null>(null);
@@ -49,15 +51,27 @@ export function CreatePost({
     const storedDraft = window.localStorage.getItem(draftKey);
     if (storedDraft) {
       try {
-        const parsed = JSON.parse(storedDraft) as {
-          content?: string;
-          mediaUrls?: string[];
-        };
-        if (typeof parsed.content === "string") {
-          setContent(parsed.content);
-        }
-        if (Array.isArray(parsed.mediaUrls)) {
-          setMediaUrls(parsed.mediaUrls.filter(Boolean).slice(0, 4));
+        const parsedUnknown = JSON.parse(storedDraft) as unknown;
+        if (
+          parsedUnknown &&
+          typeof parsedUnknown === "object" &&
+          !Array.isArray(parsedUnknown)
+        ) {
+          const parsed = parsedUnknown as {
+            content?: unknown;
+            mediaUrls?: unknown;
+          };
+          if (typeof parsed.content === "string") {
+            setContent(parsed.content);
+          }
+          if (Array.isArray(parsed.mediaUrls)) {
+            const urls = parsed.mediaUrls.filter(
+              (u): u is string => typeof u === "string" && !!u,
+            );
+            setMediaUrls(urls.slice(0, 4));
+          }
+        } else {
+          setContent(storedDraft);
         }
       } catch {
         setContent(storedDraft);
@@ -167,19 +181,36 @@ export function CreatePost({
     if (selectedFiles.length === 0) return;
 
     setIsUploadingMedia(true);
+    setProgressLabel("Hazırlanıyor");
+    setProgressPercent(0);
     try {
       const uploaded: string[] = [];
 
       for (const file of selectedFiles) {
         if (file.type.startsWith("video/")) {
-          uploaded.push(await uploadToR2(file));
+          const url = await uploadToR2(file, {
+            onStatus: (s: string) => {
+              if (s === "uploading") setProgressLabel("Video yükleniyor");
+              if (s === "done") setProgressLabel("Yüklendi");
+            },
+            onProgress: (p: number) => setProgressPercent(p),
+          });
+          uploaded.push(url);
           continue;
         }
 
         const croppedFile = await cropImageFile(file);
         if (!croppedFile) continue;
 
-        uploaded.push(await uploadToR2(croppedFile));
+        const url = await uploadToR2(croppedFile, {
+          onStatus: (s: string) => {
+            if (s === "converting") setProgressLabel("Dönüştürülüyor");
+            if (s === "uploading") setProgressLabel("Yükleniyor");
+            if (s === "done") setProgressLabel("Yüklendi");
+          },
+          onProgress: (p: number) => setProgressPercent(p),
+        });
+        uploaded.push(url);
       }
 
       if (uploaded.length > 0) {
@@ -189,6 +220,10 @@ export function CreatePost({
       alert((error as Error).message || "Medya yüklemesi başarısız oldu");
     } finally {
       setIsUploadingMedia(false);
+      setTimeout(() => {
+        setProgressLabel(null);
+        setProgressPercent(null);
+      }, 800);
     }
   };
 
@@ -254,12 +289,11 @@ export function CreatePost({
                     controls
                   />
                 ) : (
-                  <Image
+                  <RemoteImage
                     src={url}
                     alt="Uploaded media"
                     width={720}
                     height={720}
-                    unoptimized={url.startsWith("blob:")}
                     sizes="(max-width: 768px) 50vw, 360px"
                     className="h-32 w-full object-cover"
                   />
@@ -363,6 +397,23 @@ export function CreatePost({
             disabled={isUploadingMedia || mediaUrls.length >= 4}
           />
         </label>
+        {/* Progress UI */}
+        {isUploadingMedia && progressLabel && (
+          <div className="mr-2 ml-3 flex items-center space-x-3">
+            <div className="w-48">
+              <div className="h-2 w-full rounded-full bg-white/10">
+                <div
+                  className="h-2 rounded-full bg-blue-500"
+                  style={{ width: `${progressPercent ?? 0}%` }}
+                />
+              </div>
+              <div className="mt-1 text-xs text-gray-400">{progressLabel}</div>
+            </div>
+            <div className="text-sm text-gray-400">
+              {progressPercent != null ? `${progressPercent}%` : "..."}
+            </div>
+          </div>
+        )}
         {content.trim().length > 0 && (
           <span className="mr-3 self-center text-sm text-gray-500">
             Taslak kaydedildi

@@ -1,7 +1,6 @@
 import { api, HydrateClient } from "~/trpc/server";
 import type { RouterOutputs } from "~/trpc/react";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { UserAvatar } from "~/app/_components/UserAvatar";
 import { FollowButton } from "~/app/_components/FollowButton";
 import { auth } from "~/server/auth";
@@ -12,6 +11,7 @@ import { MessageButton } from "./MessageButton";
 import { BlockButton } from "./BlockButton";
 import { ReportUserButton } from "./ReportUserButton";
 import { linkifyText } from "~/app/_lib/linkify";
+import { RemoteImage } from "~/app/_components/RemoteImage";
 
 export default async function ProfilePage({
   params,
@@ -39,7 +39,7 @@ export default async function ProfilePage({
           </div>
           <div className="relative h-36 bg-gray-800 sm:h-48">
             {user.headerImage && (
-              <Image
+              <RemoteImage
                 src={user.headerImage}
                 alt="Başlık"
                 width={1200}
